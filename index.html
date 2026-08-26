@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kitsong · Check In/Out</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+    body {
+      background: linear-gradient(145deg, #f5f0eb 0%, #e8dfd7 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+    .card {
+      max-width: 500px;
+      width: 100%;
+      background: #fcf9f6;
+      border-radius: 40px;
+      padding: 2rem 1.5rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+      border: 1px solid rgba(255,245,235,0.5);
+    }
+    .school-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid #d8c9bc;
+      padding-bottom: 0.75rem;
+    }
+    .school-header i { font-size: 2.2rem; color: #9b7b5e; background: #ede3da; padding: 0.5rem; border-radius: 18px; }
+    .school-header h1 { font-size: 1.6rem; font-weight: 600; color: #3d2c1e; }
+    .school-header span { font-weight: 300; color: #7f6a58; margin-left: auto; background: #e4d7cd; padding: 0.2rem 0.9rem; border-radius: 30px; }
+    
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 1.2rem;
+    }
+    .stat-box {
+      background: #ede3da;
+      border-radius: 16px;
+      padding: 0.6rem 0.4rem;
+      text-align: center;
+      border: 1px solid #d6c5b8;
+    }
+    .stat-box .number { font-size: 1.3rem; font-weight: 700; color: #3d2c1e; }
+    .stat-box .label { font-size: 0.6rem; color: #7f6a58; text-transform: uppercase; }
+    
+    .teacher-section {
+      background: #f3ede8;
+      border-radius: 60px;
+      padding: 0.2rem 0.2rem 0.2rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ddd0c4;
+    }
+    .teacher-section input {
+      border: none;
+      background: transparent;
+      padding: 0.9rem 0;
+      font-size: 1rem;
+      flex: 1;
+      outline: none;
+      font-weight: 500;
+      color: #2b1f16;
+    }
+    .teacher-section input::placeholder { color: #9f8b7b; font-weight: 400; }
+    .teacher-section button {
+      background: #7f6248;
+      border: none;
+      color: white;
+      padding: 0.7rem 1.6rem;
+      border-radius: 60px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s;
+      box-shadow: 0 4px 8px rgba(106,78,56,0.2);
+      border: 1px solid #9b7b5e;
+      white-space: nowrap;
+    }
+    .teacher-section button:hover { background: #6b4f39; transform: scale(0.97); }
+    
+    .current-teacher-display {
+      text-align: center;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #5f4a3a;
+      padding: 0.4rem;
+      background: #ede3da;
+      border-radius: 30px;
+    }
+    .current-teacher-display strong { color: #3d2c1e; }
+    .status-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .status-dot.online { background: #4caf50; }
+    .status-dot.offline { background: #f44336; }
+    .status-dot.saving { background: #ff9800; animation: pulse 0.8s infinite; }
+    @keyframes pulse {
+      0% { opacity: 0.4; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.1); }
+      100% { opacity: 0.4; transform: scale(0.9); }
+    }
+    
+    .qr-scanner-box {
+      background: #f3ede8;
+      border-radius: 28px;
+      padding: 1.2rem;
+      margin: 0.8rem 0 1rem 0;
+      border: 2px solid #b7a392;
+    }
+    .qr-scanner-box .scanner-title {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.8rem;
+      color: #3d2c1e;
+      font-weight: 600;
+    }
+    #qr-reader {
+      width: 100%;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #e2d4c9;
+      min-height: 200px;
+    }
+    #qr-reader video { border-radius: 20px; }
+    .qr-controls {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.8rem;
+      margin-top: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .qr-controls button {
+      background: #d6c5b8;
+      border: none;
+      padding: 0.5rem 1.2rem;
+      border-radius: 50px;
+      font-weight: 500;
+      color: #2d1f15;
+      cursor: pointer;
+      border: 1px solid #c3b1a2;
+    }
+    .qr-controls button:hover { background: #c3b1a2; }
+    .scan-instruction {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #7f6a58;
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      background: #ede3da;
+      border-radius: 30px;
+    }
+    
+    .output-area {
+      background: #f7f1eb;
+      border-radius: 28px;
+      padding: 1.2rem 1.5rem;
+      margin: 1.2rem 0 0.2rem;
+      border-left: 6px solid #b7a090;
+    }
+    .output-area .log-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.4rem 0;
+      border-bottom: 1px dashed #ddd0c4;
+    }
+    .output-area .log-line:last-child { border-bottom: none; }
+    .output-area .log-label { font-weight: 500; color: #4e3b2d; }
+    .output-area .log-value {
+      font-weight: 600;
+      color: #2d1f15;
+      background: #ede3da;
+      padding: 0.15rem 1rem;
+      border-radius: 60px;
+      font-size: 0.9rem;
+      max-width: 70%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .log-value.success { color: #2f6b4a !important; }
+    .log-value.error { color: #a1563b !important; }
+    .log-value.info { color: #4a6b8a !important; }
+    
+    .checked-in-list {
+      background: #f7f1eb;
+      border-radius: 20px;
+      padding: 0.8rem 1.2rem;
+      margin-top: 1rem;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd0c4;
+    }
+    .checked-in-list h4 { font-size: 0.75rem; color: #7f6a58; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .checked-in-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #e8dbd0;
+      font-size: 0.85rem;
+    }
+    .checked-in-item:last-child { border-bottom: none; }
+    .checked-in-item .student-name { font-weight: 600; color: #3d2c1e; }
+    .checked-in-item .student-teacher {
+      font-size: 0.65rem;
+      color: #7f6a58;
+      background: #e4d7cd;
+      padding: 0.1rem 0.6rem;
+      border-radius: 30px;
+    }
+    .checked-in-item .checkout-btn {
+      background: #d6c5b8;
+      border: none;
+      padding: 0.2rem 1rem;
+      border-radius: 30px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .checked-in-item .checkout-btn:hover { background: #b8a088; color: white; }
+    
+    .spreadsheet-status {
+      background: #e8dbd0;
+      border-radius: 60px;
+      padding: 0.6rem 1.2rem;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      border: 1px solid #d0bfb0;
+    }
+    .footer-note { text-align: center; font-size: 0.7rem; color: #a08775; margin-top: 1.2rem; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="school-header">
+    <i class="fas fa-graduation-cap"></i>
+    <h1>Kitsong</h1>
+    <span>Royal Bafokeng</span>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box"><div class="number" id="totalStudents">0</div><div class="label">Students</div></div>
+    <div class="stat-box"><div class="number" id="checkedInCount">0</div><div class="label">Checked In</div></div>
+    <div class="stat-box"><div class="number" id="checkedOutCount">0</div><div class="label">Checked Out</div></div>
+  </div>
+
+  <div class="teacher-section">
+    <i class="fas fa-chalkboard-teacher"></i>
+    <input type="text" id="teacherInput" placeholder="Enter teacher code (e.g. T2026)" autocomplete="off">
+    <button id="setTeacherBtn"><i class="fas fa-check"></i> Set</button>
+  </div>
+
+  <div class="current-teacher-display">
+    <i class="fas fa-user"></i> Teacher: <strong id="currentTeacherDisplay">Not set</strong>
+    <span id="teacherStatus" style="margin-left: 0.5rem; font-size: 0.7rem;">
+      <i class="fas fa-circle" style="color: #ff9800; font-size: 0.5rem;"></i> Ready
+    </span>
+  </div>
+
+  <div class="qr-scanner-box">
+    <div class="scanner-title">
+      <span><i class="fas fa-qrcode"></i> Scan Student QR</span>
+      <span style="font-size: 0.7rem; font-weight: 400; color: #7f6a58;">Check IN or OUT</span>
+    </div>
+    <div id="qr-reader"></div>
+    <div class="scan-instruction">
+      <i class="fas fa-camera"></i> Scan student QR code
+    </div>
+    <div class="qr-controls">
+      <button id="startScannerBtn"><i class="fas fa-play"></i> Start Camera</button>
+      <button id="stopScannerBtn"><i class="fas fa-stop"></i> Stop</button>
+    </div>
+  </div>
+
+  <div class="output-area">
+    <div class="log-line">
+      <span class="log-label"><i class="fas fa-user-graduate"></i> Student</span>
+      <span class="log-value" id="displayStudent">Waiting for scan</span>
+    </div>
+    <div class="log-line" style="border-bottom: none;">
+      <span class="log-label"><i class="fas fa-arrow-right"></i> Action</span>
+      <span class="log-value" id="displayAction">Set teacher to begin</span>
+    </div>
+  </div>
+
+  <div class="checked-in-list">
+    <h4><i class="fas fa-users"></i> Currently Checked In</h4>
+    <div id="checkedInItems">
+      <div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>
+    </div>
+  </div>
+
+  <div class="spreadsheet-status">
+    <i class="fas fa-google"></i>
+    <span>Spreadsheet:</span>
+    <span id="sheetStatusText">Loading...</span>
+    <span class="status-dot saving" id="sheetStatusDot"></span>
+  </div>
+
+  <div class="footer-note">
+    <i class="fas fa-qrcode"></i> Teacher scans QR to check students · <span id="recordCount">0</span> records
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // ⚠️ REPLACE WITH YOUR APPS SCRIPT DEPLOYMENT URL ⚠️
+  // ============================================================
+  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyONegBNL206xBAXoYjPn-X98S0kc_Fs4w-eGwiz5sf1Kk8AfUSICggJ2LLw6O7-jMXWQ/exec';
+  
+  // ============================================================
+  // APP CODE
+  // ============================================================
+  
+  let currentTeacher = null;
+  let students = {};
+  let checkedInStudents = [];
+  let records = [];
+  let html5QrCode = null;
+  let lastScanTime = 0;
+  let isProcessing = false;
+
+  const teacherInput = document.getElementById('teacherInput');
+  const setTeacherBtn = document.getElementById('setTeacherBtn');
+  const currentTeacherDisplay = document.getElementById('currentTeacherDisplay');
+  const teacherStatus = document.getElementById('teacherStatus');
+  const displayStudent = document.getElementById('displayStudent');
+  const displayAction = document.getElementById('displayAction');
+  const sheetStatusText = document.getElementById('sheetStatusText');
+  const sheetStatusDot = document.getElementById('sheetStatusDot');
+  const checkedInItems = document.getElementById('checkedInItems');
+  const totalStudents = document.getElementById('totalStudents');
+  const checkedInCount = document.getElementById('checkedInCount');
+  const checkedOutCount = document.getElementById('checkedOutCount');
+  const recordCount = document.getElementById('recordCount');
+
+  /**
+   * Load students from Google Sheets
+   */
+  async function loadStudents() {
+    try {
+      sheetStatusText.textContent = 'Loading students...';
+      sheetStatusDot.className = 'status-dot saving';
+      
+      const response = await fetch(GOOGLE_SCRIPT_URL + '?action=getStudents');
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      students = data;
+      Object.keys(students).forEach(id => {
+        students[id].status = 'out';
+        students[id].teacher = null;
+        students[id].checkInTime = null;
+      });
+      
+      loadLocalState();
+      sheetStatusText.textContent = '✅ Connected';
+      sheetStatusDot.className = 'status-dot online';
+      updateUI();
+      renderCheckedInList();
+      console.log('✅ Students loaded:', Object.keys(students).length);
+      
+    } catch (error) {
+      console.error('Error loading students:', error);
+      sheetStatusText.textContent = '⚠️ Error loading';
+      sheetStatusDot.className = 'status-dot offline';
+      loadSampleData();
+    }
+  }
+
+  /**
+   * Fallback sample data
+   */
+  function loadSampleData() {
+    students = {
+      'S001': { name: 'Hlompho', surname: 'Bogatsu', grade: '10', status: 'out' },
+      'S002': { name: 'Orearabile', surname: 'Diale', grade: '11', status: 'out' },
+      'S003': { name: 'Phetogo', surname: 'Diale', grade: '12', status: 'out' }
+    };
+    Object.keys(students).forEach(id => {
+      students[id].teacher = null;
+      students[id].checkInTime = null;
+    });
+    loadLocalState();
+    updateUI();
+    renderCheckedInList();
+    sheetStatusText.textContent = '📁 Local Data';
+    sheetStatusDot.className = 'status-dot online';
+  }
+
+  /**
+   * Load state from localStorage
+   */
+  function loadLocalState() {
+    try {
+      const saved = localStorage.getItem('kitsong_state');
+      if (saved) {
+        const data = JSON.parse(saved);
+        checkedInStudents = data.checkedInStudents || [];
+        records = data.records || [];
+        currentTeacher = data.currentTeacher || null;
+        checkedInStudents.forEach(id => {
+          if (students[id]) {
+            students[id].status = 'in';
+            students[id].teacher = data.studentTeachers ? data.studentTeachers[id] : null;
+            students[id].checkInTime = data.studentCheckIns ? data.studentCheckIns[id] : null;
+          }
+        });
+        updateTeacherDisplay();
+      }
+    } catch (e) { console.warn('Could not load local state'); }
+  }
+
+  /**
+   * Save state to localStorage
+   */
+  function saveLocalState() {
+    try {
+      const studentTeachers = {};
+      const studentCheckIns = {};
+      checkedInStudents.forEach(id => {
+        if (students[id]) {
+          studentTeachers[id] = students[id].teacher;
+          studentCheckIns[id] = students[id].checkInTime;
+        }
+      });
+      localStorage.setItem('kitsong_state', JSON.stringify({
+        checkedInStudents,
+        records,
+        currentTeacher,
+        studentTeachers,
+        studentCheckIns
+      }));
+    } catch (e) { console.warn('Could not save local state'); }
+  }
+
+  /**
+   * Set teacher
+   */
+  function setTeacher(code) {
+    if (!code || code.trim() === '') {
+      displayAction.textContent = '⚠️ Enter teacher code';
+      displayAction.className = 'log-value error';
+      return;
+    }
+    currentTeacher = code.trim().toUpperCase();
+    updateTeacherDisplay();
+    saveLocalState();
+    displayAction.textContent = `✅ Teacher ${currentTeacher} set`;
+    displayAction.className = 'log-value success';
+    teacherInput.value = '';
+    setTimeout(() => {
+      displayAction.className = 'log-value';
+      displayAction.textContent = 'Ready for scan';
+    }, 2000);
+  }
+
+  /**
+   * Update teacher display
+   */
+  function updateTeacherDisplay() {
+    if (currentTeacher) {
+      currentTeacherDisplay.textContent = currentTeacher;
+      teacherStatus.innerHTML = `<i class="fas fa-circle" style="color: #4caf50; font-size: 0.5rem;"></i> Active`;
+    } else {
+      currentTeacherDisplay.textContent = 'Not set';
+      teacherStatus.innerHTML = `<i class="fas fa-circle" style="color: #ff9800; font-size: 0.5rem;"></i> Ready`;
+    }
+  }
+
+  /**
+   * Check student
+   */
+  async function checkStudent(studentId) {
+    if (isProcessing) return;
+    isProcessing = true;
+
+    let foundId = studentId;
+    if (!students[foundId]) {
+      for (let [id, data] of Object.entries(students)) {
+        const fullName = `${data.name} ${data.surname}`.toLowerCase();
+        if (fullName === studentId.toLowerCase() || id.toLowerCase() === studentId.toLowerCase()) {
+          foundId = id;
+          break;
+        }
+      }
+    }
+
+    if (!students[foundId]) {
+      displayAction.textContent = `⚠️ Student not found: ${studentId}`;
+      displayAction.className = 'log-value error';
+      setTimeout(() => {
+        displayAction.className = 'log-value';
+        displayAction.textContent = 'Ready for scan';
+      }, 2000);
+      isProcessing = false;
+      return;
+    }
+
+    const student = students[foundId];
+    const fullName = `${student.name} ${student.surname}`.trim();
+    let action;
+
+    if (student.status === 'in') {
+      action = 'check-out';
+      student.status = 'out';
+      student.teacher = null;
+      student.checkInTime = null;
+      const index = checkedInStudents.indexOf(foundId);
+      if (index > -1) checkedInStudents.splice(index, 1);
+      displayAction.textContent = `🔁 Checked Out`;
+      displayAction.className = 'log-value info';
+    } else {
+      action = 'check-in';
+      student.status = 'in';
+      student.teacher = currentTeacher || 'Unknown';
+      student.checkInTime = new Date().toLocaleTimeString();
+      if (!checkedInStudents.includes(foundId)) checkedInStudents.push(foundId);
+      displayAction.textContent = `✅ Checked In`;
+      displayAction.className = 'log-value success';
+    }
+
+    displayStudent.textContent = `${fullName} (Grade ${student.grade})`;
+    
+    await saveToSheet(foundId, fullName, action);
+    
+    saveLocalState();
+    updateUI();
+    renderCheckedInList();
+    
+    if (navigator.vibrate) navigator.vibrate(50);
+    setTimeout(() => { isProcessing = false; }, 500);
+  }
+
+  /**
+   * Save to Google Sheets
+   */
+  async function saveToSheet(studentId, studentName, action) {
+    const timestamp = new Date().toISOString();
+    const entry = {
+      teacher: currentTeacher || 'Unknown',
+      studentId: studentId,
+      studentName: studentName,
+      action: action,
+      timestamp: timestamp,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString()
+    };
+
+    records.push(entry);
+
+    sheetStatusText.textContent = 'Saving...';
+    sheetStatusDot.className = 'status-dot saving';
+
+    try {
+      await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+      });
+      
+      sheetStatusText.textContent = '✅ Saved';
+      sheetStatusDot.className = 'status-dot online';
+    } catch (error) {
+      console.error('Error saving:', error);
+      sheetStatusText.textContent = '⚠️ Offline';
+      sheetStatusDot.className = 'status-dot offline';
+    }
+  }
+
+  /**
+   * Process QR scan
+   */
+  function processQRScan(decodedText) {
+    const now = Date.now();
+    if (now - lastScanTime < 1500) return;
+    lastScanTime = now;
+
+    if (!currentTeacher) {
+      displayAction.textContent = '⚠️ Set teacher first!';
+      displayAction.className = 'log-value error';
+      setTimeout(() => {
+        displayAction.className = 'log-value';
+        displayAction.textContent = 'Ready for scan';
+      }, 2000);
+      return;
+    }
+
+    const studentId = decodedText.trim();
+    if (studentId) {
+      checkStudent(studentId);
+    } else {
+      displayAction.textContent = '⚠️ Invalid QR code';
+      displayAction.className = 'log-value error';
+      setTimeout(() => {
+        displayAction.className = 'log-value';
+        displayAction.textContent = 'Ready for scan';
+      }, 2000);
+    }
+  }
+
+  /**
+   * Render checked in list
+   */
+  function renderCheckedInList() {
+    if (checkedInStudents.length === 0) {
+      checkedInItems.innerHTML = '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
+      return;
+    }
+    let html = '';
+    checkedInStudents.forEach(id => {
+      const student = students[id];
+      if (student && student.status === 'in') {
+        const fullName = `${student.name} ${student.surname}`.trim();
+        html += `
+          <div class="checked-in-item">
+            <div>
+              <span class="student-name">${fullName}</span>
+              <span class="student-teacher">${student.teacher || 'Unknown'} · Grade ${student.grade}</span>
+            </div>
+            <button class="checkout-btn" onclick="window.checkoutStudent('${id}')">
+              <i class="fas fa-sign-out-alt"></i> Out
+            </button>
+          </div>
+        `;
+      }
+    });
+    checkedInItems.innerHTML = html || '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
+  }
+
+  /**
+   * Checkout student
+   */
+  window.checkoutStudent = function(studentId) {
+    if (!currentTeacher) {
+      displayAction.textContent = '⚠️ Set teacher first!';
+      displayAction.className = 'log-value error';
+      return;
+    }
+    checkStudent(studentId);
+  };
+
+  /**
+   * Update UI
+   */
+  function updateUI() {
+    const total = Object.keys(students).length;
+    const checkedIn = checkedInStudents.length;
+    totalStudents.textContent = total;
+    checkedInCount.textContent = checkedIn;
+    checkedOutCount.textContent = total - checkedIn;
+    recordCount.textContent = records.length;
+  }
+
+  /**
+   * QR Scanner
+   */
+  function initQrScanner() {
+    if (html5QrCode) {
+      stopQrScanner();
+      setTimeout(() => initQrScanner(), 300);
+      return;
+    }
+    
+    // Check if camera is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      displayAction.textContent = '⚠️ Camera not supported on this device';
+      displayAction.className = 'log-value error';
+      return;
+    }
+    
+    try {
+      html5QrCode = new Html5Qrcode("qr-reader", {
+        verbose: false,
+        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
+      });
+      
+      const config = {
+        fps: 15,
+        qrbox: { width: 240, height: 240 },
+        aspectRatio: 1.0
+      };
+      
+      html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText) => { processQRScan(decodedText); },
+        (error) => {
+          // Ignore continuous errors
+        }
+      ).then(() => {
+        displayAction.textContent = '📷 Scanning...';
+        displayAction.className = 'log-value info';
+      }).catch((err) => {
+        console.error('Camera error:', err);
+        displayAction.textContent = '⚠️ Camera error: ' + err.message;
+        displayAction.className = 'log-value error';
+        html5QrCode = null;
+      });
+    } catch (e) {
+      console.error('Scanner init error:', e);
+      displayAction.textContent = '⚠️ Scanner init failed: ' + e.message;
+      displayAction.className = 'log-value error';
+    }
+  }
+
+  /**
+   * Stop QR scanner
+   */
+  function stopQrScanner() {
+    if (html5QrCode) {
+      html5QrCode.stop().then(() => {
+        displayAction.textContent = '⏹️ Stopped';
+        displayAction.className = 'log-value info';
+        html5QrCode = null;
+      }).catch(() => {
+        html5QrCode = null;
+      });
+    }
+  }
+
+  // ----- Event Listeners -----
+  setTeacherBtn.addEventListener('click', () => setTeacher(teacherInput.value));
+  teacherInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setTeacher(teacherInput.value);
+    }
+  });
+
+  document.getElementById('startScannerBtn').addEventListener('click', () => {
+    if (!currentTeacher) {
+      displayAction.textContent = '⚠️ Set teacher first!';
+      displayAction.className = 'log-value error';
+      setTimeout(() => {
+        displayAction.className = 'log-value';
+        displayAction.textContent = 'Ready for scan';
+      }, 2000);
+      return;
+    }
+    initQrScanner();
+  });
+
+  document.getElementById('stopScannerBtn').addEventListener('click', stopQrScanner);
+  window.addEventListener('beforeunload', stopQrScanner);
+
+  // ----- Initialize -----
+  console.log('🚀 Kitsong Check-in System Loading...');
+  loadStudents();
+  console.log('✅ Ready!');
+</script>
+
+</body>
+</html>
