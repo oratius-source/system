@@ -7,7 +7,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+    }
     body {
       background: linear-gradient(145deg, #f5f0eb 0%, #e8dfd7 100%);
       min-height: 100vh;
@@ -488,12 +493,12 @@
 
 <script>
 // ============================================================
-// YOUR APPS SCRIPT DEPLOYMENT URL
+// YOUR APPS SCRIPT DEPLOYMENT URL - UPDATED
 // ============================================================
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5065O7bPDW01Wz1qU3obUTuNkAHzVJn-zZhSFtBo7Vkpm9vu-a6sTLloIOHtwMbjP4Q/exec';
 
 // ============================================================
-// APP CODE - NO CONFIRM() POPUPS
+// APP CODE - COMPLETE AND FIXED
 // ============================================================
 
 let currentTeacher = null;
@@ -697,7 +702,7 @@ function loadSampleData() {
 }
 
 // ============================================================
-// SHOW CONFIRMATION DIALOG (NO confirm() POPUP)
+// SHOW CONFIRMATION DIALOG
 // ============================================================
 function showConfirmDialog(studentId, action) {
   const student = students[studentId];
@@ -755,7 +760,7 @@ async function executeCheck(studentId, action) {
 }
 
 // ============================================================
-// CHECK STUDENT - NO confirm() POPUP
+// CHECK STUDENT
 // ============================================================
 async function checkStudent(studentId) {
   if (isProcessing) return;
@@ -889,4 +894,234 @@ async function saveToSheet(studentId, studentName, action) {
 // ============================================================
 // QR SCAN PROCESSING
 // ============================================================
-function process
+function processQRScan(decodedText) {
+  console.log('📱 QR Scanned:', decodedText);
+
+  const now = Date.now();
+  if (now - lastScanTime < 1500) return;
+  lastScanTime = now;
+
+  if (!currentTeacher) {
+    displayAction.textContent = '⚠️ Set teacher first!';
+    displayAction.className = 'log-value error';
+    setTimeout(() => {
+      displayAction.className = 'log-value';
+      displayAction.textContent = 'Ready for scan';
+    }, 2000);
+    return;
+  }
+
+  const input = decodedText.trim();
+
+  if (students[input]) {
+    checkStudent(input);
+    return;
+  }
+
+  let foundId = null;
+  const inputLower = input.toLowerCase();
+
+  for (let [id, data] of Object.entries(students)) {
+    const fullName = `${data.name} ${data.surname}`.toLowerCase();
+    const idLower = id.toLowerCase();
+
+    if (fullName === inputLower || idLower === inputLower) {
+      foundId = id;
+      break;
+    }
+  }
+
+  if (foundId) {
+    checkStudent(foundId);
+  } else {
+    displayAction.textContent = `⚠️ Student not found: ${input}`;
+    displayAction.className = 'log-value error';
+    console.log('❌ Student not found:', input);
+    console.log('📚 Available students:', Object.keys(students));
+
+    setTimeout(() => {
+      displayAction.className = 'log-value';
+      displayAction.textContent = 'Ready for scan';
+    }, 3000);
+  }
+}
+
+// ============================================================
+// RENDER CHECKED IN LIST
+// ============================================================
+function renderCheckedInList() {
+  if (checkedInStudents.length === 0) {
+    checkedInItems.innerHTML = '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
+    return;
+  }
+
+  let html = '';
+  checkedInStudents.forEach(id => {
+    const student = students[id];
+    if (student && student.status === 'in') {
+      const fullName = `${student.name} ${student.surname}`.trim();
+      html += `
+        <div class="checked-in-item">
+          <div>
+            <span class="student-name">${fullName}</span>
+            <span class="student-teacher">${student.teacher || 'Unknown'} · Grade ${student.grade}</span>
+          </div>
+          <button class="checkout-btn" onclick="window.checkoutStudent('${id}')">
+            <i class="fas fa-sign-out-alt"></i> Out
+          </button>
+        </div>
+      `;
+    }
+  });
+
+  checkedInItems.innerHTML = html || '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
+}
+
+// ============================================================
+// CHECKOUT STUDENT
+// ============================================================
+window.checkoutStudent = function(studentId) {
+  if (!currentTeacher) {
+    displayAction.textContent = '⚠️ Set teacher first!';
+    displayAction.className = 'log-value error';
+    return;
+  }
+  
+  if (isProcessing) return;
+  
+  // Check if confirmation is enabled
+  if (confirmToggle.checked && !suppressConfirm) {
+    // Find student to show in dialog
+    let foundId = studentId;
+    if (!students[foundId]) {
+      for (let [id, data] of Object.entries(students)) {
+        if (id === studentId) { foundId = id; break; }
+      }
+    }
+    if (students[foundId]) {
+      showConfirmDialog(foundId, 'check-out');
+    }
+  } else {
+    checkStudent(studentId);
+  }
+};
+
+// ============================================================
+// UPDATE UI
+// ============================================================
+function updateUI() {
+  const total = Object.keys(students).length;
+  const checkedIn = checkedInStudents.length;
+  totalStudents.textContent = total;
+  checkedInCount.textContent = checkedIn;
+  checkedOutCount.textContent = total - checkedIn;
+  recordCount.textContent = records.length;
+}
+
+// ============================================================
+// QR SCANNER
+// ============================================================
+function initQrScanner() {
+  if (html5QrCode) {
+    stopQrScanner();
+    setTimeout(() => initQrScanner(), 300);
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    displayAction.textContent = '⚠️ Camera not supported on this device';
+    displayAction.className = 'log-value error';
+    return;
+  }
+
+  try {
+    html5QrCode = new Html5Qrcode("qr-reader", {
+      verbose: false,
+      formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
+    });
+
+    const config = {
+      fps: 15,
+      qrbox: { width: 240, height: 240 },
+      aspectRatio: 1.0
+    };
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      (decodedText) => { processQRScan(decodedText); },
+      (error) => {}
+    ).then(() => {
+      displayAction.textContent = '📷 Scanning...';
+      displayAction.className = 'log-value info';
+    }).catch((err) => {
+      console.error('Camera error:', err);
+      displayAction.textContent = '⚠️ Camera error: ' + err.message;
+      displayAction.className = 'log-value error';
+      html5QrCode = null;
+    });
+  } catch (e) {
+    console.error('Scanner init error:', e);
+    displayAction.textContent = '⚠️ Scanner init failed: ' + e.message;
+    displayAction.className = 'log-value error';
+  }
+}
+
+function stopQrScanner() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => {
+      displayAction.textContent = '⏹️ Stopped';
+      displayAction.className = 'log-value info';
+      html5QrCode = null;
+    }).catch(() => {
+      html5QrCode = null;
+    });
+  }
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+setTeacherBtn.addEventListener('click', () => setTeacher(teacherInput.value));
+teacherInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    setTeacher(teacherInput.value);
+  }
+});
+
+document.getElementById('startScannerBtn').addEventListener('click', () => {
+  if (!currentTeacher) {
+    displayAction.textContent = '⚠️ Set teacher first!';
+    displayAction.className = 'log-value error';
+    setTimeout(() => {
+      displayAction.className = 'log-value';
+      displayAction.textContent = 'Ready for scan';
+    }, 2000);
+    return;
+  }
+  initQrScanner();
+});
+
+document.getElementById('stopScannerBtn').addEventListener('click', stopQrScanner);
+window.addEventListener('beforeunload', stopQrScanner);
+
+// Reset confirmation state when toggled off
+confirmToggle.addEventListener('change', function() {
+  if (!this.checked) {
+    suppressConfirm = false;
+    dontAskAgain.checked = false;
+    saveLocalState();
+  }
+});
+
+// ============================================================
+// INITIALIZE
+// ============================================================
+console.log('🚀 Kitsong Check-in System Loading...');
+loadStudents();
+console.log('✅ Ready!');
+</script>
+
+</body>
+</html>
