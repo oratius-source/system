@@ -230,6 +230,7 @@
       font-size: 0.7rem;
       cursor: pointer;
       font-weight: 500;
+      transition: 0.15s;
     }
     .checked-in-item .checkout-btn:hover { background: #b8a088; color: white; }
     
@@ -491,8 +492,8 @@
     }
   }
 
-  // ----- Check student -----
-  async function checkStudent(studentId) {
+  // ----- Check student with confirmation -----
+  async function checkStudent(studentId, isConfirmed = false) {
     if (isProcessing) return;
     isProcessing = true;
 
@@ -520,24 +521,43 @@
 
     const student = students[foundId];
     const fullName = `${student.name} ${student.surname}`.trim();
-    let action;
+    const currentStatus = student.status;
+    const action = currentStatus === 'in' ? 'check-out' : 'check-in';
+    const actionText = currentStatus === 'in' ? 'OUT' : 'IN';
+    
+    // If not confirmed, show confirmation dialog
+    if (!isConfirmed) {
+      const confirmMessage = `📋 Confirm Action:\n\nStudent: ${fullName}\nGrade: ${student.grade}\nAction: Check ${actionText}\n\nAre you sure you want to check ${actionText.toLowerCase()} this student?`;
+      
+      if (!confirm(confirmMessage)) {
+        displayAction.textContent = '⏹️ Cancelled';
+        displayAction.className = 'log-value info';
+        setTimeout(() => {
+          displayAction.className = 'log-value';
+          displayAction.textContent = 'Ready for scan';
+        }, 1500);
+        isProcessing = false;
+        return;
+      }
+    }
 
+    // Process the check-in/out
     if (student.status === 'in') {
-      action = 'check-out';
+      // Check OUT
       student.status = 'out';
       student.teacher = null;
       student.checkInTime = null;
       const index = checkedInStudents.indexOf(foundId);
       if (index > -1) checkedInStudents.splice(index, 1);
-      displayAction.textContent = `🔁 Checked Out`;
+      displayAction.textContent = `🔁 ${fullName} Checked Out`;
       displayAction.className = 'log-value info';
     } else {
-      action = 'check-in';
+      // Check IN
       student.status = 'in';
       student.teacher = currentTeacher || 'Unknown';
       student.checkInTime = new Date().toLocaleTimeString();
       if (!checkedInStudents.includes(foundId)) checkedInStudents.push(foundId);
-      displayAction.textContent = `✅ Checked In`;
+      displayAction.textContent = `✅ ${fullName} Checked In`;
       displayAction.className = 'log-value success';
     }
 
@@ -588,9 +608,7 @@
     }
   }
 
-  // ============================================================
-  // ⭐ UPDATED QR SCAN FUNCTION - REPLACE THIS SECTION ⭐
-  // ============================================================
+  // ----- Process QR scan -----
   function processQRScan(decodedText) {
     console.log('📱 QR Scanned:', decodedText);
     
@@ -644,9 +662,6 @@
       }, 3000);
     }
   }
-  // ============================================================
-  // ⭐ END OF UPDATED QR SCAN FUNCTION ⭐
-  // ============================================================
 
   // ----- Render checked in list -----
   function renderCheckedInList() {
@@ -675,14 +690,32 @@
     checkedInItems.innerHTML = html || '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
   }
 
-  // ----- Checkout student -----
+  // ----- Checkout student with confirmation -----
   window.checkoutStudent = function(studentId) {
     if (!currentTeacher) {
       displayAction.textContent = '⚠️ Set teacher first!';
       displayAction.className = 'log-value error';
       return;
     }
-    checkStudent(studentId);
+    
+    // Show confirmation before checking out from button
+    const student = students[studentId];
+    if (student && student.status === 'in') {
+      const fullName = `${student.name} ${student.surname}`.trim();
+      const confirmMessage = `📋 Confirm Check Out:\n\nStudent: ${fullName}\nGrade: ${student.grade}\n\nAre you sure you want to check out this student?`;
+      
+      if (!confirm(confirmMessage)) {
+        displayAction.textContent = '⏹️ Cancelled';
+        displayAction.className = 'log-value info';
+        setTimeout(() => {
+          displayAction.className = 'log-value';
+          displayAction.textContent = 'Ready for scan';
+        }, 1500);
+        return;
+      }
+    }
+    
+    checkStudent(studentId, true);
   };
 
   // ----- Update UI -----
@@ -706,85 +739,4 @@
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       displayAction.textContent = '⚠️ Camera not supported on this device';
       displayAction.className = 'log-value error';
-      return;
-    }
-    
-    try {
-      html5QrCode = new Html5Qrcode("qr-reader", {
-        verbose: false,
-        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
-      });
-      
-      const config = {
-        fps: 15,
-        qrbox: { width: 240, height: 240 },
-        aspectRatio: 1.0
-      };
-      
-      html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        (decodedText) => { processQRScan(decodedText); },
-        (error) => {}
-      ).then(() => {
-        displayAction.textContent = '📷 Scanning...';
-        displayAction.className = 'log-value info';
-      }).catch((err) => {
-        console.error('Camera error:', err);
-        displayAction.textContent = '⚠️ Camera error: ' + err.message;
-        displayAction.className = 'log-value error';
-        html5QrCode = null;
-      });
-    } catch (e) {
-      console.error('Scanner init error:', e);
-      displayAction.textContent = '⚠️ Scanner init failed: ' + e.message;
-      displayAction.className = 'log-value error';
-    }
-  }
-
-  // ----- Stop QR scanner -----
-  function stopQrScanner() {
-    if (html5QrCode) {
-      html5QrCode.stop().then(() => {
-        displayAction.textContent = '⏹️ Stopped';
-        displayAction.className = 'log-value info';
-        html5QrCode = null;
-      }).catch(() => {
-        html5QrCode = null;
-      });
-    }
-  }
-
-  // ----- Event Listeners -----
-  setTeacherBtn.addEventListener('click', () => setTeacher(teacherInput.value));
-  teacherInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      setTeacher(teacherInput.value);
-    }
-  });
-
-  document.getElementById('startScannerBtn').addEventListener('click', () => {
-    if (!currentTeacher) {
-      displayAction.textContent = '⚠️ Set teacher first!';
-      displayAction.className = 'log-value error';
-      setTimeout(() => {
-        displayAction.className = 'log-value';
-        displayAction.textContent = 'Ready for scan';
-      }, 2000);
-      return;
-    }
-    initQrScanner();
-  });
-
-  document.getElementById('stopScannerBtn').addEventListener('click', stopQrScanner);
-  window.addEventListener('beforeunload', stopQrScanner);
-
-  // ----- Initialize -----
-  console.log('🚀 Kitsong Check-in System Loading...');
-  loadStudents();
-  console.log('✅ Ready!');
-</script>
-
-</body>
-</html>
+      return
