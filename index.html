@@ -100,7 +100,6 @@
     }
     .current-teacher-display strong { color: #3d2c1e; }
     
-    /* Confirmation Toggle */
     .settings-row {
       display: flex;
       align-items: center;
@@ -379,39 +378,29 @@
       accent-color: #7f6248;
       cursor: pointer;
     }
-    .confirm-dialog .auto-close {
-      font-size: 0.7rem;
-      color: #a08775;
-      text-align: center;
-      margin-top: 0.5rem;
-    }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <!-- School Header -->
   <div class="school-header">
     <i class="fas fa-graduation-cap"></i>
     <h1>Kitsong</h1>
     <span>Royal Bafokeng</span>
   </div>
 
-  <!-- Stats -->
   <div class="stats-row">
     <div class="stat-box"><div class="number" id="totalStudents">0</div><div class="label">Students</div></div>
     <div class="stat-box"><div class="number" id="checkedInCount">0</div><div class="label">Checked In</div></div>
     <div class="stat-box"><div class="number" id="checkedOutCount">0</div><div class="label">Checked Out</div></div>
   </div>
 
-  <!-- Teacher Section -->
   <div class="teacher-section">
     <i class="fas fa-chalkboard-teacher"></i>
     <input type="text" id="teacherInput" placeholder="Enter teacher code (e.g. T2026)" autocomplete="off">
     <button id="setTeacherBtn"><i class="fas fa-check"></i> Set</button>
   </div>
 
-  <!-- Current Teacher Display -->
   <div class="current-teacher-display">
     <i class="fas fa-user"></i> Teacher: <strong id="currentTeacherDisplay">Not set</strong>
     <span id="teacherStatus" style="margin-left: 0.5rem; font-size: 0.7rem;">
@@ -419,19 +408,17 @@
     </span>
   </div>
 
-  <!-- Settings: Confirmation Toggle -->
   <div class="settings-row">
     <label>
       <input type="checkbox" id="confirmToggle" checked>
-      <i class="fas fa-check-circle"></i> Confirm before check-in/out
+      <i class="fas fa-check-circle"></i> Confirm
     </label>
     <label>
-      <input type="checkbox" id="autoCloseToggle">
-      <i class="fas fa-clock"></i> Auto-close (3s)
+      <input type="checkbox" id="dontAskToggle">
+      <i class="fas fa-check-double"></i> Don't ask again
     </label>
   </div>
 
-  <!-- QR Scanner -->
   <div class="qr-scanner-box">
     <div class="scanner-title">
       <span><i class="fas fa-qrcode"></i> Scan Student QR</span>
@@ -447,7 +434,6 @@
     </div>
   </div>
 
-  <!-- Output Area -->
   <div class="output-area">
     <div class="log-line">
       <span class="log-label"><i class="fas fa-user-graduate"></i> Student</span>
@@ -459,7 +445,6 @@
     </div>
   </div>
 
-  <!-- Checked In List -->
   <div class="checked-in-list">
     <h4><i class="fas fa-users"></i> Currently Checked In</h4>
     <div id="checkedInItems">
@@ -467,7 +452,6 @@
     </div>
   </div>
 
-  <!-- Spreadsheet Status -->
   <div class="spreadsheet-status">
     <i class="fas fa-google"></i>
     <span>Spreadsheet:</span>
@@ -483,7 +467,7 @@
 <!-- Custom Confirmation Dialog -->
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-dialog">
-    <h3><i class="fas fa-question-circle"></i> Confirm Action</h3>
+    <h3><i class="fas fa-question-circle"></i> Confirm</h3>
     <div class="student-info">
       <strong id="confirmStudentName">Student Name</strong>
       <span id="confirmStudentGrade">Grade 10</span>
@@ -497,9 +481,8 @@
     </div>
     <label class="dont-ask">
       <input type="checkbox" id="dontAskAgain">
-      Don't ask again for this session
+      Don't ask again this session
     </label>
-    <div class="auto-close" id="autoCloseTimer">Auto-closing in 3s...</div>
   </div>
 </div>
 
@@ -510,7 +493,7 @@
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybrbnAhRsx_oB2y9fljAR8KkjMlAnBPy8r6ahyjEA7o22f2enpLamjEVL9LwecbEEEaw/exec';
 
 // ============================================================
-// APP CODE - WITH IMPROVED CONFIRMATION
+// APP CODE - NO CONFIRM() POPUPS
 // ============================================================
 
 let currentTeacher = null;
@@ -522,8 +505,6 @@ let lastScanTime = 0;
 let isProcessing = false;
 let pendingStudentId = null;
 let pendingAction = null;
-let confirmTimer = null;
-let confirmActive = false;
 let suppressConfirm = false;
 
 // DOM refs
@@ -540,6 +521,8 @@ const totalStudents = document.getElementById('totalStudents');
 const checkedInCount = document.getElementById('checkedInCount');
 const checkedOutCount = document.getElementById('checkedOutCount');
 const recordCount = document.getElementById('recordCount');
+const confirmToggle = document.getElementById('confirmToggle');
+const dontAskToggle = document.getElementById('dontAskToggle');
 
 // Confirmation dialog refs
 const confirmOverlay = document.getElementById('confirmOverlay');
@@ -549,12 +532,9 @@ const confirmActionBadge = document.getElementById('confirmActionBadge');
 const confirmYes = document.getElementById('confirmYes');
 const confirmNo = document.getElementById('confirmNo');
 const dontAskAgain = document.getElementById('dontAskAgain');
-const autoCloseTimer = document.getElementById('autoCloseTimer');
-const confirmToggle = document.getElementById('confirmToggle');
-const autoCloseToggle = document.getElementById('autoCloseToggle');
 
 // ============================================================
-// UPDATE TEACHER DISPLAY
+// TEACHER FUNCTIONS
 // ============================================================
 function updateTeacherDisplay() {
   if (currentTeacher) {
@@ -568,9 +548,6 @@ function updateTeacherDisplay() {
   }
 }
 
-// ============================================================
-// SET TEACHER
-// ============================================================
 function setTeacher(code) {
   if (!code || code.trim() === '') {
     displayAction.textContent = '⚠️ Enter teacher code';
@@ -607,8 +584,11 @@ function loadLocalState() {
       records = data.records || [];
       currentTeacher = data.currentTeacher || null;
       suppressConfirm = data.suppressConfirm || false;
+      
       if (suppressConfirm) {
         confirmToggle.checked = false;
+        dontAskToggle.checked = true;
+        dontAskAgain.checked = true;
       }
       
       checkedInStudents.forEach(id => {
@@ -717,7 +697,7 @@ function loadSampleData() {
 }
 
 // ============================================================
-// SHOW CONFIRMATION DIALOG
+// SHOW CONFIRMATION DIALOG (NO confirm() POPUP)
 // ============================================================
 function showConfirmDialog(studentId, action) {
   const student = students[studentId];
@@ -736,31 +716,6 @@ function showConfirmDialog(studentId, action) {
   pendingAction = action;
   
   confirmOverlay.classList.add('active');
-  confirmActive = true;
-  
-  // Auto-close timer
-  if (autoCloseToggle.checked) {
-    let seconds = 3;
-    autoCloseTimer.textContent = `Auto-closing in ${seconds}s...`;
-    autoCloseTimer.style.display = 'block';
-    
-    clearInterval(confirmTimer);
-    confirmTimer = setInterval(() => {
-      seconds--;
-      if (seconds <= 0) {
-        clearInterval(confirmTimer);
-        // Auto-select Yes
-        confirmOverlay.classList.remove('active');
-        confirmActive = false;
-        autoCloseTimer.style.display = 'none';
-        executeCheck(pendingStudentId, pendingAction);
-      } else {
-        autoCloseTimer.textContent = `Auto-closing in ${seconds}s...`;
-      }
-    }, 1000);
-  } else {
-    autoCloseTimer.style.display = 'none';
-  }
 }
 
 // ============================================================
@@ -800,7 +755,7 @@ async function executeCheck(studentId, action) {
 }
 
 // ============================================================
-// CHECK STUDENT WITH CONFIRMATION
+// CHECK STUDENT - NO confirm() POPUP
 // ============================================================
 async function checkStudent(studentId) {
   if (isProcessing) return;
@@ -832,10 +787,8 @@ async function checkStudent(studentId) {
   const student = students[foundId];
   const action = student.status === 'in' ? 'check-out' : 'check-in';
   
-  // Check if confirmation is enabled AND not suppressed
-  const showConfirm = confirmToggle.checked && !suppressConfirm;
-  
-  if (showConfirm) {
+  // Check if confirmation is enabled
+  if (confirmToggle.checked && !suppressConfirm) {
     showConfirmDialog(foundId, action);
     isProcessing = false;
     return;
@@ -850,13 +803,12 @@ async function checkStudent(studentId) {
 // CONFIRMATION BUTTON HANDLERS
 // ============================================================
 confirmYes.addEventListener('click', function() {
-  clearInterval(confirmTimer);
   confirmOverlay.classList.remove('active');
-  confirmActive = false;
   
   if (dontAskAgain.checked) {
     suppressConfirm = true;
     confirmToggle.checked = false;
+    dontAskToggle.checked = true;
     saveLocalState();
   }
   
@@ -867,9 +819,7 @@ confirmYes.addEventListener('click', function() {
 });
 
 confirmNo.addEventListener('click', function() {
-  clearInterval(confirmTimer);
   confirmOverlay.classList.remove('active');
-  confirmActive = false;
   
   displayAction.textContent = '⏹️ Cancelled';
   displayAction.className = 'log-value info';
@@ -886,9 +836,7 @@ confirmNo.addEventListener('click', function() {
 // Close overlay when clicking outside
 confirmOverlay.addEventListener('click', function(e) {
   if (e.target === confirmOverlay) {
-    clearInterval(confirmTimer);
     confirmOverlay.classList.remove('active');
-    confirmActive = false;
     displayAction.textContent = '⏹️ Cancelled';
     displayAction.className = 'log-value info';
     setTimeout(() => {
@@ -941,236 +889,4 @@ async function saveToSheet(studentId, studentName, action) {
 // ============================================================
 // QR SCAN PROCESSING
 // ============================================================
-function processQRScan(decodedText) {
-  console.log('📱 QR Scanned:', decodedText);
-
-  const now = Date.now();
-  if (now - lastScanTime < 1500) return;
-  lastScanTime = now;
-
-  if (!currentTeacher) {
-    displayAction.textContent = '⚠️ Set teacher first!';
-    displayAction.className = 'log-value error';
-    setTimeout(() => {
-      displayAction.className = 'log-value';
-      displayAction.textContent = 'Ready for scan';
-    }, 2000);
-    return;
-  }
-
-  const input = decodedText.trim();
-
-  if (students[input]) {
-    checkStudent(input);
-    return;
-  }
-
-  let foundId = null;
-  const inputLower = input.toLowerCase();
-
-  for (let [id, data] of Object.entries(students)) {
-    const fullName = `${data.name} ${data.surname}`.toLowerCase();
-    const idLower = id.toLowerCase();
-
-    if (fullName === inputLower || idLower === inputLower) {
-      foundId = id;
-      break;
-    }
-  }
-
-  if (foundId) {
-    checkStudent(foundId);
-  } else {
-    displayAction.textContent = `⚠️ Student not found: ${input}`;
-    displayAction.className = 'log-value error';
-    console.log('❌ Student not found:', input);
-    console.log('📚 Available students:', Object.keys(students));
-
-    setTimeout(() => {
-      displayAction.className = 'log-value';
-      displayAction.textContent = 'Ready for scan';
-    }, 3000);
-  }
-}
-
-// ============================================================
-// RENDER CHECKED IN LIST
-// ============================================================
-function renderCheckedInList() {
-  if (checkedInStudents.length === 0) {
-    checkedInItems.innerHTML = '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
-    return;
-  }
-
-  let html = '';
-  checkedInStudents.forEach(id => {
-    const student = students[id];
-    if (student && student.status === 'in') {
-      const fullName = `${student.name} ${student.surname}`.trim();
-      html += `
-        <div class="checked-in-item">
-          <div>
-            <span class="student-name">${fullName}</span>
-            <span class="student-teacher">${student.teacher || 'Unknown'} · Grade ${student.grade}</span>
-          </div>
-          <button class="checkout-btn" onclick="window.checkoutStudent('${id}')">
-            <i class="fas fa-sign-out-alt"></i> Out
-          </button>
-        </div>
-      `;
-    }
-  });
-
-  checkedInItems.innerHTML = html || '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
-}
-
-// ============================================================
-// CHECKOUT STUDENT
-// ============================================================
-window.checkoutStudent = function(studentId) {
-  if (!currentTeacher) {
-    displayAction.textContent = '⚠️ Set teacher first!';
-    displayAction.className = 'log-value error';
-    return;
-  }
-  
-  if (isProcessing) return;
-  
-  // Check if confirmation is enabled AND not suppressed
-  const showConfirm = confirmToggle.checked && !suppressConfirm;
-  
-  if (showConfirm) {
-    // Find student to show in dialog
-    let foundId = studentId;
-    if (!students[foundId]) {
-      for (let [id, data] of Object.entries(students)) {
-        if (id === studentId) { foundId = id; break; }
-      }
-    }
-    if (students[foundId]) {
-      showConfirmDialog(foundId, 'check-out');
-    }
-  } else {
-    checkStudent(studentId);
-  }
-};
-
-// ============================================================
-// UPDATE UI
-// ============================================================
-function updateUI() {
-  const total = Object.keys(students).length;
-  const checkedIn = checkedInStudents.length;
-  totalStudents.textContent = total;
-  checkedInCount.textContent = checkedIn;
-  checkedOutCount.textContent = total - checkedIn;
-  recordCount.textContent = records.length;
-}
-
-// ============================================================
-// QR SCANNER
-// ============================================================
-function initQrScanner() {
-  if (html5QrCode) {
-    stopQrScanner();
-    setTimeout(() => initQrScanner(), 300);
-    return;
-  }
-
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    displayAction.textContent = '⚠️ Camera not supported on this device';
-    displayAction.className = 'log-value error';
-    return;
-  }
-
-  try {
-    html5QrCode = new Html5Qrcode("qr-reader", {
-      verbose: false,
-      formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
-    });
-
-    const config = {
-      fps: 15,
-      qrbox: { width: 240, height: 240 },
-      aspectRatio: 1.0
-    };
-
-    html5QrCode.start(
-      { facingMode: "environment" },
-      config,
-      (decodedText) => { processQRScan(decodedText); },
-      (error) => {}
-    ).then(() => {
-      displayAction.textContent = '📷 Scanning...';
-      displayAction.className = 'log-value info';
-    }).catch((err) => {
-      console.error('Camera error:', err);
-      displayAction.textContent = '⚠️ Camera error: ' + err.message;
-      displayAction.className = 'log-value error';
-      html5QrCode = null;
-    });
-  } catch (e) {
-    console.error('Scanner init error:', e);
-    displayAction.textContent = '⚠️ Scanner init failed: ' + e.message;
-    displayAction.className = 'log-value error';
-  }
-}
-
-function stopQrScanner() {
-  if (html5QrCode) {
-    html5QrCode.stop().then(() => {
-      displayAction.textContent = '⏹️ Stopped';
-      displayAction.className = 'log-value info';
-      html5QrCode = null;
-    }).catch(() => {
-      html5QrCode = null;
-    });
-  }
-}
-
-// ============================================================
-// EVENT LISTENERS
-// ============================================================
-setTeacherBtn.addEventListener('click', () => setTeacher(teacherInput.value));
-teacherInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    setTeacher(teacherInput.value);
-  }
-});
-
-document.getElementById('startScannerBtn').addEventListener('click', () => {
-  if (!currentTeacher) {
-    displayAction.textContent = '⚠️ Set teacher first!';
-    displayAction.className = 'log-value error';
-    setTimeout(() => {
-      displayAction.className = 'log-value';
-      displayAction.textContent = 'Ready for scan';
-    }, 2000);
-    return;
-  }
-  initQrScanner();
-});
-
-document.getElementById('stopScannerBtn').addEventListener('click', stopQrScanner);
-window.addEventListener('beforeunload', stopQrScanner);
-
-// Reset confirmation state when toggled off
-confirmToggle.addEventListener('change', function() {
-  if (!this.checked) {
-    suppressConfirm = false;
-    dontAskAgain.checked = false;
-    saveLocalState();
-  }
-});
-
-// ============================================================
-// INITIALIZE
-// ============================================================
-console.log('🚀 Kitsong Check-in System Loading...');
-loadStudents();
-console.log('✅ Ready!');
-</script>
-
-</body>
-</html>
+function process
