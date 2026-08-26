@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kitsong Check-In</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(145deg, #f5f0eb 0%, #e8dfd7 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+        .card {
+            max-width: 450px;
+            width: 100%;
+            background: #fcf9f6;
+            border-radius: 40px;
+            padding: 3rem 2rem;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,245,235,0.5);
+        }
+        .logo {
+            font-size: 3rem;
+            color: #9b7b5e;
+            margin-bottom: 0.5rem;
+        }
+        h1 {
+            color: #3d2c1e;
+            font-size: 1.8rem;
+            margin-bottom: 0.2rem;
+        }
+        .subtitle {
+            color: #7f6a58;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+        }
+        .qr-container {
+            background: white;
+            padding: 1rem;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .qr-container img {
+            width: 200px;
+            height: 200px;
+            display: block;
+        }
+        .link-box {
+            background: #f3ede8;
+            padding: 0.8rem 1.2rem;
+            border-radius: 60px;
+            margin: 1rem 0;
+            word-break: break-all;
+            font-size: 0.85rem;
+            color: #3d2c1e;
+            border: 1px solid #ddd0c4;
+        }
+        .btn {
+            display: inline-block;
+            background: #7f6248;
+            color: white;
+            padding: 0.8rem 2.5rem;
+            border-radius: 60px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: 0.15s;
+            border: none;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        .btn:hover {
+            background: #6b4f39;
+            transform: scale(0.97);
+        }
+        .btn i {
+            margin-right: 8px;
+        }
+        .footer {
+            color: #a08775;
+            font-size: 0.7rem;
+            margin-top: 1.5rem;
+        }
+        .copy-btn {
+            background: #d6c5b8;
+            border: none;
+            padding: 0.4rem 1.2rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: #3d2c1e;
+            margin-top: 0.5rem;
+        }
+        .copy-btn:hover {
+            background: #c3b1a2;
+        }
+        .instructions {
+            text-align: left;
+            background: #f3ede8;
+            padding: 1rem 1.2rem;
+            border-radius: 16px;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            color: #5f4a3a;
+            border: 1px solid #ddd0c4;
+        }
+        .instructions ol {
+            margin-left: 1.2rem;
+            padding-left: 0;
+        }
+        .instructions li {
+            margin-bottom: 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">🎓</div>
+        <h1>Kitsong School</h1>
+        <div class="subtitle">Royal Bafokeng · Check-In System</div>
+
+        <!-- QR Code -->
+        <div class="qr-container">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://script.google.com/macros/s/AKfycbycQm4QIbtHpDceyOoy7bdcInb5wP_MNTNNn2oPfq9Ej6Lx68GW4R0yQBqIYN_tzzF_0Q/exec" alt="QR Code">
+        </div>
+
+        <!-- Direct Link -->
+        <div class="link-box">
+            <span id="shortLink">🔗 Click to open</span>
+        </div>
+
+        <a href="https://script.google.com/macros/s/AKfycbycQm4QIbtHpDceyOoy7bdcInb5wP_MNTNNn2oPfq9Ej6Lx68GW4R0yQBqIYN_tzzF_0Q/exec" target="_blank" class="btn">
+            <i class="fas fa-arrow-right"></i> Open Check-In App
+        </a>
+
+        <button class="copy-btn" onclick="copyLink()">
+            <i class="fas fa-copy"></i> Copy Link
+        </button>
+
+        <div class="instructions">
+            <strong>📋 Teacher Instructions:</strong>
+            <ol>
+                <li>Tap the <strong>blue button</strong> above</li>
+                <li>Enter your <strong>teacher code</strong> (e.g., T2026)</li>
+                <li>Click <strong>"Start Camera"</strong></li>
+                <li>Scan <strong>student QR codes</strong></li>
+                <li>Students are checked <strong>IN/OUT</strong> automatically!</li>
+            </ol>
+        </div>
+
+        <div class="footer">
+            <i class="fas fa-qrcode"></i> Scan QR to open · Kitsong School
+        </div>
+    </div>
+
+    <script>
+        function copyLink() {
+            const link = 'https://script.google.com/macros/s/AKfycbycQm4QIbtHpDceyOoy7bdcInb5wP_MNTNNn2oPfq9Ej6Lx68GW4R0yQBqIYN_tzzF_0Q/exec';
+            navigator.clipboard.writeText(link).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-copy"></i> Copy Link';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
