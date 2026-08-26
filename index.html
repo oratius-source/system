@@ -323,9 +323,9 @@
 
 <script>
   // ============================================================
-  // ⚠️ REPLACE WITH YOUR APPS SCRIPT DEPLOYMENT URL ⚠️
+  // YOUR APPS SCRIPT DEPLOYMENT URL
   // ============================================================
-  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyONegBNL206xBAXoYjPn-X98S0kc_Fs4w-eGwiz5sf1Kk8AfUSICggJ2LLw6O7-jMXWQ/exec';
+  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_sWP2NwOdUJPD5_Tn6EAfJIJHuVmY8bQeuGCWW3hXaBPCEzpQeWGNNUdvpHGJf4JEHw/exec';
   
   // ============================================================
   // APP CODE
@@ -339,6 +339,7 @@
   let lastScanTime = 0;
   let isProcessing = false;
 
+  // DOM refs
   const teacherInput = document.getElementById('teacherInput');
   const setTeacherBtn = document.getElementById('setTeacherBtn');
   const currentTeacherDisplay = document.getElementById('currentTeacherDisplay');
@@ -353,9 +354,7 @@
   const checkedOutCount = document.getElementById('checkedOutCount');
   const recordCount = document.getElementById('recordCount');
 
-  /**
-   * Load students from Google Sheets
-   */
+  // ----- Load students from Google Sheets -----
   async function loadStudents() {
     try {
       sheetStatusText.textContent = 'Loading students...';
@@ -390,14 +389,24 @@
     }
   }
 
-  /**
-   * Fallback sample data
-   */
+  // ----- Fallback sample data -----
   function loadSampleData() {
     students = {
       'S001': { name: 'Hlompho', surname: 'Bogatsu', grade: '10', status: 'out' },
       'S002': { name: 'Orearabile', surname: 'Diale', grade: '11', status: 'out' },
-      'S003': { name: 'Phetogo', surname: 'Diale', grade: '12', status: 'out' }
+      'S003': { name: 'Phetogo', surname: 'Diale', grade: '12', status: 'out' },
+      'S004': { name: 'Ruth', surname: 'Edossa', grade: '10', status: 'out' },
+      'S005': { name: 'Olerato', surname: 'Khunou', grade: '11', status: 'out' },
+      'S006': { name: 'Oletshegofaditse', surname: 'Khuto', grade: '12', status: 'out' },
+      'S007': { name: 'Ontiretse', surname: 'Lesejane', grade: '10', status: 'out' },
+      'S008': { name: 'Omolemo', surname: 'Mafoko', grade: '11', status: 'out' },
+      'S009': { name: 'Resego', surname: 'Makofane', grade: '12', status: 'out' },
+      'S010': { name: 'Tumelo', surname: 'Maseko', grade: '10', status: 'out' },
+      'S011': { name: 'Regomoditswe', surname: 'Mashao', grade: '11', status: 'out' },
+      'S012': { name: 'Omogolo', surname: 'Mdluli', grade: '12', status: 'out' },
+      'S013': { name: 'Tebogo', surname: 'Mmutlane', grade: '10', status: 'out' },
+      'S014': { name: 'Kgolagano', surname: 'Modikoe', grade: '11', status: 'out' },
+      'S015': { name: 'Nomthandazo', surname: 'Mokgatle', grade: '12', status: 'out' }
     };
     Object.keys(students).forEach(id => {
       students[id].teacher = null;
@@ -410,9 +419,7 @@
     sheetStatusDot.className = 'status-dot online';
   }
 
-  /**
-   * Load state from localStorage
-   */
+  // ----- Load state from localStorage -----
   function loadLocalState() {
     try {
       const saved = localStorage.getItem('kitsong_state');
@@ -433,9 +440,7 @@
     } catch (e) { console.warn('Could not load local state'); }
   }
 
-  /**
-   * Save state to localStorage
-   */
+  // ----- Save state to localStorage -----
   function saveLocalState() {
     try {
       const studentTeachers = {};
@@ -456,9 +461,7 @@
     } catch (e) { console.warn('Could not save local state'); }
   }
 
-  /**
-   * Set teacher
-   */
+  // ----- Set teacher -----
   function setTeacher(code) {
     if (!code || code.trim() === '') {
       displayAction.textContent = '⚠️ Enter teacher code';
@@ -477,9 +480,7 @@
     }, 2000);
   }
 
-  /**
-   * Update teacher display
-   */
+  // ----- Update teacher display -----
   function updateTeacherDisplay() {
     if (currentTeacher) {
       currentTeacherDisplay.textContent = currentTeacher;
@@ -490,9 +491,7 @@
     }
   }
 
-  /**
-   * Check student
-   */
+  // ----- Check student -----
   async function checkStudent(studentId) {
     if (isProcessing) return;
     isProcessing = true;
@@ -554,9 +553,7 @@
     setTimeout(() => { isProcessing = false; }, 500);
   }
 
-  /**
-   * Save to Google Sheets
-   */
+  // ----- Save to Google Sheets -----
   async function saveToSheet(studentId, studentName, action) {
     const timestamp = new Date().toISOString();
     const entry = {
@@ -591,10 +588,12 @@
     }
   }
 
-  /**
-   * Process QR scan
-   */
+  // ============================================================
+  // ⭐ UPDATED QR SCAN FUNCTION - REPLACE THIS SECTION ⭐
+  // ============================================================
   function processQRScan(decodedText) {
+    console.log('📱 QR Scanned:', decodedText);
+    
     const now = Date.now();
     if (now - lastScanTime < 1500) return;
     lastScanTime = now;
@@ -609,22 +608,47 @@
       return;
     }
 
-    const studentId = decodedText.trim();
-    if (studentId) {
-      checkStudent(studentId);
+    const input = decodedText.trim();
+    
+    // Try to find by ID first
+    if (students[input]) {
+      checkStudent(input);
+      return;
+    }
+    
+    // If not found, try to find by full name (case insensitive)
+    let foundId = null;
+    const inputLower = input.toLowerCase();
+    
+    for (let [id, data] of Object.entries(students)) {
+      const fullName = `${data.name} ${data.surname}`.toLowerCase();
+      const idLower = id.toLowerCase();
+      
+      if (fullName === inputLower || idLower === inputLower) {
+        foundId = id;
+        break;
+      }
+    }
+    
+    if (foundId) {
+      checkStudent(foundId);
     } else {
-      displayAction.textContent = '⚠️ Invalid QR code';
+      displayAction.textContent = `⚠️ Student not found: ${input}`;
       displayAction.className = 'log-value error';
+      console.log('❌ Student not found:', input);
+      console.log('📚 Available students:', Object.keys(students));
+      
       setTimeout(() => {
         displayAction.className = 'log-value';
         displayAction.textContent = 'Ready for scan';
-      }, 2000);
+      }, 3000);
     }
   }
+  // ============================================================
+  // ⭐ END OF UPDATED QR SCAN FUNCTION ⭐
+  // ============================================================
 
-  /**
-   * Render checked in list
-   */
+  // ----- Render checked in list -----
   function renderCheckedInList() {
     if (checkedInStudents.length === 0) {
       checkedInItems.innerHTML = '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
@@ -651,9 +675,7 @@
     checkedInItems.innerHTML = html || '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
   }
 
-  /**
-   * Checkout student
-   */
+  // ----- Checkout student -----
   window.checkoutStudent = function(studentId) {
     if (!currentTeacher) {
       displayAction.textContent = '⚠️ Set teacher first!';
@@ -663,9 +685,7 @@
     checkStudent(studentId);
   };
 
-  /**
-   * Update UI
-   */
+  // ----- Update UI -----
   function updateUI() {
     const total = Object.keys(students).length;
     const checkedIn = checkedInStudents.length;
@@ -675,9 +695,7 @@
     recordCount.textContent = records.length;
   }
 
-  /**
-   * QR Scanner
-   */
+  // ----- QR Scanner -----
   function initQrScanner() {
     if (html5QrCode) {
       stopQrScanner();
@@ -685,7 +703,6 @@
       return;
     }
     
-    // Check if camera is available
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       displayAction.textContent = '⚠️ Camera not supported on this device';
       displayAction.className = 'log-value error';
@@ -708,9 +725,7 @@
         { facingMode: "environment" },
         config,
         (decodedText) => { processQRScan(decodedText); },
-        (error) => {
-          // Ignore continuous errors
-        }
+        (error) => {}
       ).then(() => {
         displayAction.textContent = '📷 Scanning...';
         displayAction.className = 'log-value info';
@@ -727,9 +742,7 @@
     }
   }
 
-  /**
-   * Stop QR scanner
-   */
+  // ----- Stop QR scanner -----
   function stopQrScanner() {
     if (html5QrCode) {
       html5QrCode.stop().then(() => {
