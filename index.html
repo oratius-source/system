@@ -60,7 +60,7 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      margin-bottom: 1rem;
+      margin-bottom: 0.8rem;
       border: 1px solid #ddd0c4;
     }
     .teacher-section input {
@@ -91,7 +91,7 @@
     
     .current-teacher-display {
       text-align: center;
-      margin-bottom: 1rem;
+      margin-bottom: 0.8rem;
       font-size: 0.9rem;
       color: #5f4a3a;
       padding: 0.4rem;
@@ -99,6 +99,33 @@
       border-radius: 30px;
     }
     .current-teacher-display strong { color: #3d2c1e; }
+    
+    /* Confirmation Toggle */
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem;
+      margin-bottom: 1rem;
+      padding: 0.4rem;
+      background: #ede3da;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      color: #5f4a3a;
+    }
+    .settings-row label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+    }
+    .settings-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #7f6248;
+      cursor: pointer;
+    }
+    
     .status-dot {
       display: inline-block;
       width: 10px;
@@ -247,6 +274,117 @@
       border: 1px solid #d0bfb0;
     }
     .footer-note { text-align: center; font-size: 0.7rem; color: #a08775; margin-top: 1.2rem; }
+
+    /* Custom Confirmation Dialog */
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    .confirm-overlay.active {
+      display: flex;
+    }
+    .confirm-dialog {
+      background: white;
+      border-radius: 24px;
+      padding: 2rem;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .confirm-dialog h3 {
+      color: #3d2c1e;
+      margin-bottom: 0.5rem;
+      font-size: 1.2rem;
+    }
+    .confirm-dialog .student-info {
+      background: #f3ede8;
+      padding: 0.8rem;
+      border-radius: 12px;
+      margin: 0.8rem 0;
+      font-size: 0.95rem;
+    }
+    .confirm-dialog .student-info strong {
+      color: #3d2c1e;
+      display: block;
+      font-size: 1.1rem;
+    }
+    .confirm-dialog .student-info span {
+      color: #7f6a58;
+      font-size: 0.85rem;
+    }
+    .confirm-dialog .action-badge {
+      display: inline-block;
+      padding: 0.2rem 1rem;
+      border-radius: 30px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      margin-top: 0.3rem;
+    }
+    .action-badge.in { background: #c8e6c9; color: #2e7d32; }
+    .action-badge.out { background: #ffccbc; color: #c62828; }
+    
+    .confirm-options {
+      display: flex;
+      gap: 0.8rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .confirm-options button {
+      padding: 0.6rem 1.8rem;
+      border: none;
+      border-radius: 60px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: 0.15s;
+      flex: 1;
+      min-width: 80px;
+    }
+    .confirm-options .btn-yes {
+      background: #2f6b4a;
+      color: white;
+    }
+    .confirm-options .btn-yes:hover { background: #1e4a32; transform: scale(0.97); }
+    .confirm-options .btn-no {
+      background: #d6c5b8;
+      color: #3d2c1e;
+    }
+    .confirm-options .btn-no:hover { background: #c3b1a2; transform: scale(0.97); }
+    
+    .confirm-dialog .dont-ask {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.8rem;
+      font-size: 0.8rem;
+      color: #7f6a58;
+      cursor: pointer;
+    }
+    .confirm-dialog .dont-ask input {
+      width: 16px;
+      height: 16px;
+      accent-color: #7f6248;
+      cursor: pointer;
+    }
+    .confirm-dialog .auto-close {
+      font-size: 0.7rem;
+      color: #a08775;
+      text-align: center;
+      margin-top: 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -273,12 +411,24 @@
     <button id="setTeacherBtn"><i class="fas fa-check"></i> Set</button>
   </div>
 
-  <!-- Current Teacher Display - FIXED -->
-  <div class="current-teacher-display" id="teacherDisplayContainer">
+  <!-- Current Teacher Display -->
+  <div class="current-teacher-display">
     <i class="fas fa-user"></i> Teacher: <strong id="currentTeacherDisplay">Not set</strong>
     <span id="teacherStatus" style="margin-left: 0.5rem; font-size: 0.7rem;">
       <i class="fas fa-circle" style="color: #ff9800; font-size: 0.5rem;"></i> Ready
     </span>
+  </div>
+
+  <!-- Settings: Confirmation Toggle -->
+  <div class="settings-row">
+    <label>
+      <input type="checkbox" id="confirmToggle" checked>
+      <i class="fas fa-check-circle"></i> Confirm before check-in/out
+    </label>
+    <label>
+      <input type="checkbox" id="autoCloseToggle">
+      <i class="fas fa-clock"></i> Auto-close (3s)
+    </label>
   </div>
 
   <!-- QR Scanner -->
@@ -330,6 +480,29 @@
   </div>
 </div>
 
+<!-- Custom Confirmation Dialog -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-dialog">
+    <h3><i class="fas fa-question-circle"></i> Confirm Action</h3>
+    <div class="student-info">
+      <strong id="confirmStudentName">Student Name</strong>
+      <span id="confirmStudentGrade">Grade 10</span>
+      <div>
+        <span class="action-badge" id="confirmActionBadge">IN</span>
+      </div>
+    </div>
+    <div class="confirm-options">
+      <button class="btn-yes" id="confirmYes"><i class="fas fa-check"></i> Yes</button>
+      <button class="btn-no" id="confirmNo"><i class="fas fa-times"></i> No</button>
+    </div>
+    <label class="dont-ask">
+      <input type="checkbox" id="dontAskAgain">
+      Don't ask again for this session
+    </label>
+    <div class="auto-close" id="autoCloseTimer">Auto-closing in 3s...</div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // YOUR APPS SCRIPT DEPLOYMENT URL
@@ -337,7 +510,7 @@
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybrbnAhRsx_oB2y9fljAR8KkjMlAnBPy8r6ahyjEA7o22f2enpLamjEVL9LwecbEEEaw/exec';
 
 // ============================================================
-// APP CODE - COMPLETE AND FIXED
+// APP CODE - WITH IMPROVED CONFIRMATION
 // ============================================================
 
 let currentTeacher = null;
@@ -347,6 +520,11 @@ let records = [];
 let html5QrCode = null;
 let lastScanTime = 0;
 let isProcessing = false;
+let pendingStudentId = null;
+let pendingAction = null;
+let confirmTimer = null;
+let confirmActive = false;
+let suppressConfirm = false;
 
 // DOM refs
 const teacherInput = document.getElementById('teacherInput');
@@ -363,8 +541,20 @@ const checkedInCount = document.getElementById('checkedInCount');
 const checkedOutCount = document.getElementById('checkedOutCount');
 const recordCount = document.getElementById('recordCount');
 
+// Confirmation dialog refs
+const confirmOverlay = document.getElementById('confirmOverlay');
+const confirmStudentName = document.getElementById('confirmStudentName');
+const confirmStudentGrade = document.getElementById('confirmStudentGrade');
+const confirmActionBadge = document.getElementById('confirmActionBadge');
+const confirmYes = document.getElementById('confirmYes');
+const confirmNo = document.getElementById('confirmNo');
+const dontAskAgain = document.getElementById('dontAskAgain');
+const autoCloseTimer = document.getElementById('autoCloseTimer');
+const confirmToggle = document.getElementById('confirmToggle');
+const autoCloseToggle = document.getElementById('autoCloseToggle');
+
 // ============================================================
-// UPDATE TEACHER DISPLAY - FIXED
+// UPDATE TEACHER DISPLAY
 // ============================================================
 function updateTeacherDisplay() {
   if (currentTeacher) {
@@ -379,7 +569,7 @@ function updateTeacherDisplay() {
 }
 
 // ============================================================
-// SET TEACHER - FIXED
+// SET TEACHER
 // ============================================================
 function setTeacher(code) {
   if (!code || code.trim() === '') {
@@ -389,8 +579,6 @@ function setTeacher(code) {
   }
   
   currentTeacher = code.trim().toUpperCase();
-  
-  // Update display immediately
   currentTeacherDisplay.textContent = currentTeacher;
   currentTeacherDisplay.style.color = '#2f6b4a';
   teacherStatus.innerHTML = `<i class="fas fa-circle" style="color: #4caf50; font-size: 0.5rem;"></i> Active`;
@@ -408,7 +596,7 @@ function setTeacher(code) {
 }
 
 // ============================================================
-// LOAD LOCAL STATE
+// LOCAL STORAGE
 // ============================================================
 function loadLocalState() {
   try {
@@ -418,6 +606,10 @@ function loadLocalState() {
       checkedInStudents = data.checkedInStudents || [];
       records = data.records || [];
       currentTeacher = data.currentTeacher || null;
+      suppressConfirm = data.suppressConfirm || false;
+      if (suppressConfirm) {
+        confirmToggle.checked = false;
+      }
       
       checkedInStudents.forEach(id => {
         if (students[id]) {
@@ -434,9 +626,6 @@ function loadLocalState() {
   }
 }
 
-// ============================================================
-// SAVE LOCAL STATE
-// ============================================================
 function saveLocalState() {
   try {
     const studentTeachers = {};
@@ -452,13 +641,14 @@ function saveLocalState() {
       records,
       currentTeacher,
       studentTeachers,
-      studentCheckIns
+      studentCheckIns,
+      suppressConfirm: suppressConfirm
     }));
   } catch (e) { console.warn('Could not save local state'); }
 }
 
 // ============================================================
-// LOAD STUDENTS FROM GOOGLE SHEETS
+// LOAD STUDENTS
 // ============================================================
 async function loadStudents() {
   try {
@@ -495,7 +685,7 @@ async function loadStudents() {
 }
 
 // ============================================================
-// FALLBACK SAMPLE DATA
+// SAMPLE DATA
 // ============================================================
 function loadSampleData() {
   students = {
@@ -527,12 +717,96 @@ function loadSampleData() {
 }
 
 // ============================================================
+// SHOW CONFIRMATION DIALOG
+// ============================================================
+function showConfirmDialog(studentId, action) {
+  const student = students[studentId];
+  if (!student) return;
+
+  const fullName = `${student.name} ${student.surname}`.trim();
+  const actionText = action === 'check-in' ? 'IN' : 'OUT';
+  const badgeClass = action === 'check-in' ? 'in' : 'out';
+  
+  confirmStudentName.textContent = fullName;
+  confirmStudentGrade.textContent = `Grade ${student.grade}`;
+  confirmActionBadge.textContent = actionText;
+  confirmActionBadge.className = `action-badge ${badgeClass}`;
+  
+  pendingStudentId = studentId;
+  pendingAction = action;
+  
+  confirmOverlay.classList.add('active');
+  confirmActive = true;
+  
+  // Auto-close timer
+  if (autoCloseToggle.checked) {
+    let seconds = 3;
+    autoCloseTimer.textContent = `Auto-closing in ${seconds}s...`;
+    autoCloseTimer.style.display = 'block';
+    
+    clearInterval(confirmTimer);
+    confirmTimer = setInterval(() => {
+      seconds--;
+      if (seconds <= 0) {
+        clearInterval(confirmTimer);
+        // Auto-select Yes
+        confirmOverlay.classList.remove('active');
+        confirmActive = false;
+        autoCloseTimer.style.display = 'none';
+        executeCheck(pendingStudentId, pendingAction);
+      } else {
+        autoCloseTimer.textContent = `Auto-closing in ${seconds}s...`;
+      }
+    }, 1000);
+  } else {
+    autoCloseTimer.style.display = 'none';
+  }
+}
+
+// ============================================================
+// EXECUTE CHECK
+// ============================================================
+async function executeCheck(studentId, action) {
+  if (!studentId) return;
+  
+  const student = students[studentId];
+  if (!student) return;
+  
+  const fullName = `${student.name} ${student.surname}`.trim();
+  
+  if (action === 'check-out') {
+    student.status = 'out';
+    student.teacher = null;
+    student.checkInTime = null;
+    const index = checkedInStudents.indexOf(studentId);
+    if (index > -1) checkedInStudents.splice(index, 1);
+    displayAction.textContent = `🔁 ${fullName} Checked Out`;
+    displayAction.className = 'log-value info';
+  } else {
+    student.status = 'in';
+    student.teacher = currentTeacher || 'Unknown';
+    student.checkInTime = new Date().toLocaleTimeString();
+    if (!checkedInStudents.includes(studentId)) checkedInStudents.push(studentId);
+    displayAction.textContent = `✅ ${fullName} Checked In`;
+    displayAction.className = 'log-value success';
+  }
+
+  displayStudent.textContent = `${fullName} (Grade ${student.grade})`;
+  await saveToSheet(studentId, fullName, action);
+  saveLocalState();
+  updateUI();
+  renderCheckedInList();
+  if (navigator.vibrate) navigator.vibrate(50);
+}
+
+// ============================================================
 // CHECK STUDENT WITH CONFIRMATION
 // ============================================================
-async function checkStudent(studentId, isConfirmed = false) {
+async function checkStudent(studentId) {
   if (isProcessing) return;
   isProcessing = true;
 
+  // Find student
   let foundId = studentId;
   if (!students[foundId]) {
     for (let [id, data] of Object.entries(students)) {
@@ -556,55 +830,76 @@ async function checkStudent(studentId, isConfirmed = false) {
   }
 
   const student = students[foundId];
-  const fullName = `${student.name} ${student.surname}`.trim();
-  const currentStatus = student.status;
-  const action = currentStatus === 'in' ? 'check-out' : 'check-in';
-  const actionText = currentStatus === 'in' ? 'OUT' : 'IN';
-
-  if (!isConfirmed) {
-    const confirmMessage = `📋 Confirm Action:\n\n` +
-                          `Student: ${fullName}\n` +
-                          `Grade: ${student.grade}\n` +
-                          `Action: Check ${actionText}\n\n` +
-                          `Are you sure you want to check ${actionText.toLowerCase()} this student?`;
-
-    if (!confirm(confirmMessage)) {
-      displayAction.textContent = '⏹️ Cancelled';
-      displayAction.className = 'log-value info';
-      setTimeout(() => {
-        displayAction.className = 'log-value';
-        displayAction.textContent = 'Ready for scan';
-      }, 1500);
-      isProcessing = false;
-      return;
-    }
+  const action = student.status === 'in' ? 'check-out' : 'check-in';
+  
+  // Check if confirmation is enabled AND not suppressed
+  const showConfirm = confirmToggle.checked && !suppressConfirm;
+  
+  if (showConfirm) {
+    showConfirmDialog(foundId, action);
+    isProcessing = false;
+    return;
   }
-
-  if (student.status === 'in') {
-    student.status = 'out';
-    student.teacher = null;
-    student.checkInTime = null;
-    const index = checkedInStudents.indexOf(foundId);
-    if (index > -1) checkedInStudents.splice(index, 1);
-    displayAction.textContent = `🔁 ${fullName} Checked Out`;
-    displayAction.className = 'log-value info';
-  } else {
-    student.status = 'in';
-    student.teacher = currentTeacher || 'Unknown';
-    student.checkInTime = new Date().toLocaleTimeString();
-    if (!checkedInStudents.includes(foundId)) checkedInStudents.push(foundId);
-    displayAction.textContent = `✅ ${fullName} Checked In`;
-    displayAction.className = 'log-value success';
-  }
-
-  displayStudent.textContent = `${fullName} (Grade ${student.grade})`;
-  await saveToSheet(foundId, fullName, action);
-  saveLocalState();
-  updateUI();
-  renderCheckedInList();
-  if (navigator.vibrate) navigator.vibrate(50);
-  setTimeout(() => { isProcessing = false; }, 500);
+  
+  // Skip confirmation - execute directly
+  await executeCheck(foundId, action);
+  isProcessing = false;
 }
+
+// ============================================================
+// CONFIRMATION BUTTON HANDLERS
+// ============================================================
+confirmYes.addEventListener('click', function() {
+  clearInterval(confirmTimer);
+  confirmOverlay.classList.remove('active');
+  confirmActive = false;
+  
+  if (dontAskAgain.checked) {
+    suppressConfirm = true;
+    confirmToggle.checked = false;
+    saveLocalState();
+  }
+  
+  executeCheck(pendingStudentId, pendingAction);
+  pendingStudentId = null;
+  pendingAction = null;
+  isProcessing = false;
+});
+
+confirmNo.addEventListener('click', function() {
+  clearInterval(confirmTimer);
+  confirmOverlay.classList.remove('active');
+  confirmActive = false;
+  
+  displayAction.textContent = '⏹️ Cancelled';
+  displayAction.className = 'log-value info';
+  setTimeout(() => {
+    displayAction.className = 'log-value';
+    displayAction.textContent = 'Ready for scan';
+  }, 1500);
+  
+  pendingStudentId = null;
+  pendingAction = null;
+  isProcessing = false;
+});
+
+// Close overlay when clicking outside
+confirmOverlay.addEventListener('click', function(e) {
+  if (e.target === confirmOverlay) {
+    clearInterval(confirmTimer);
+    confirmOverlay.classList.remove('active');
+    confirmActive = false;
+    displayAction.textContent = '⏹️ Cancelled';
+    displayAction.className = 'log-value info';
+    setTimeout(() => {
+      displayAction.className = 'log-value';
+      displayAction.textContent = 'Ready for scan';
+    }, 1500);
+    pendingStudentId = null;
+    pendingAction = null;
+    isProcessing = false;
+  }
+});
 
 // ============================================================
 // SAVE TO GOOGLE SHEETS
@@ -730,7 +1025,7 @@ function renderCheckedInList() {
 }
 
 // ============================================================
-// CHECKOUT STUDENT (Called from "Out" button)
+// CHECKOUT STUDENT
 // ============================================================
 window.checkoutStudent = function(studentId) {
   if (!currentTeacher) {
@@ -738,27 +1033,26 @@ window.checkoutStudent = function(studentId) {
     displayAction.className = 'log-value error';
     return;
   }
-
-  const student = students[studentId];
-  if (student && student.status === 'in') {
-    const fullName = `${student.name} ${student.surname}`.trim();
-    const confirmMessage = `📋 Confirm Check Out:\n\n` +
-                          `Student: ${fullName}\n` +
-                          `Grade: ${student.grade}\n\n` +
-                          `Are you sure you want to check out this student?`;
-
-    if (!confirm(confirmMessage)) {
-      displayAction.textContent = '⏹️ Cancelled';
-      displayAction.className = 'log-value info';
-      setTimeout(() => {
-        displayAction.className = 'log-value';
-        displayAction.textContent = 'Ready for scan';
-      }, 1500);
-      return;
+  
+  if (isProcessing) return;
+  
+  // Check if confirmation is enabled AND not suppressed
+  const showConfirm = confirmToggle.checked && !suppressConfirm;
+  
+  if (showConfirm) {
+    // Find student to show in dialog
+    let foundId = studentId;
+    if (!students[foundId]) {
+      for (let [id, data] of Object.entries(students)) {
+        if (id === studentId) { foundId = id; break; }
+      }
     }
+    if (students[foundId]) {
+      showConfirmDialog(foundId, 'check-out');
+    }
+  } else {
+    checkStudent(studentId);
   }
-
-  checkStudent(studentId, true);
 };
 
 // ============================================================
@@ -860,6 +1154,15 @@ document.getElementById('startScannerBtn').addEventListener('click', () => {
 
 document.getElementById('stopScannerBtn').addEventListener('click', stopQrScanner);
 window.addEventListener('beforeunload', stopQrScanner);
+
+// Reset confirmation state when toggled off
+confirmToggle.addEventListener('change', function() {
+  if (!this.checked) {
+    suppressConfirm = false;
+    dontAskAgain.checked = false;
+    saveLocalState();
+  }
+});
 
 // ============================================================
 // INITIALIZE
