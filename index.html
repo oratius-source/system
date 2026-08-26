@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Kitsong · Check In/Out</title>
@@ -252,31 +252,36 @@
 <body>
 
 <div class="card">
+  <!-- School Header -->
   <div class="school-header">
     <i class="fas fa-graduation-cap"></i>
     <h1>Kitsong</h1>
     <span>Royal Bafokeng</span>
   </div>
 
+  <!-- Stats -->
   <div class="stats-row">
     <div class="stat-box"><div class="number" id="totalStudents">0</div><div class="label">Students</div></div>
     <div class="stat-box"><div class="number" id="checkedInCount">0</div><div class="label">Checked In</div></div>
     <div class="stat-box"><div class="number" id="checkedOutCount">0</div><div class="label">Checked Out</div></div>
   </div>
 
+  <!-- Teacher Section -->
   <div class="teacher-section">
     <i class="fas fa-chalkboard-teacher"></i>
     <input type="text" id="teacherInput" placeholder="Enter teacher code (e.g. T2026)" autocomplete="off">
     <button id="setTeacherBtn"><i class="fas fa-check"></i> Set</button>
   </div>
 
-  <div class="current-teacher-display">
+  <!-- Current Teacher Display - FIXED -->
+  <div class="current-teacher-display" id="teacherDisplayContainer">
     <i class="fas fa-user"></i> Teacher: <strong id="currentTeacherDisplay">Not set</strong>
     <span id="teacherStatus" style="margin-left: 0.5rem; font-size: 0.7rem;">
       <i class="fas fa-circle" style="color: #ff9800; font-size: 0.5rem;"></i> Ready
     </span>
   </div>
 
+  <!-- QR Scanner -->
   <div class="qr-scanner-box">
     <div class="scanner-title">
       <span><i class="fas fa-qrcode"></i> Scan Student QR</span>
@@ -292,6 +297,7 @@
     </div>
   </div>
 
+  <!-- Output Area -->
   <div class="output-area">
     <div class="log-line">
       <span class="log-label"><i class="fas fa-user-graduate"></i> Student</span>
@@ -303,6 +309,7 @@
     </div>
   </div>
 
+  <!-- Checked In List -->
   <div class="checked-in-list">
     <h4><i class="fas fa-users"></i> Currently Checked In</h4>
     <div id="checkedInItems">
@@ -310,6 +317,7 @@
     </div>
   </div>
 
+  <!-- Spreadsheet Status -->
   <div class="spreadsheet-status">
     <i class="fas fa-google"></i>
     <span>Spreadsheet:</span>
@@ -323,420 +331,543 @@
 </div>
 
 <script>
-  // ============================================================
-  // YOUR APPS SCRIPT DEPLOYMENT URL
-  // ============================================================
-  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx3J7TLjBks6q5YNc4FVlMYqzFVSRtHB2yDPJDxzL0nYNRWT76nIL_Fq5aSThNBx5OXEw/exec';
-  
-  // ============================================================
-  // APP CODE
-  // ============================================================
-  
-  let currentTeacher = null;
-  let students = {};
-  let checkedInStudents = [];
-  let records = [];
-  let html5QrCode = null;
-  let lastScanTime = 0;
-  let isProcessing = false;
+// ============================================================
+// YOUR APPS SCRIPT DEPLOYMENT URL
+// ============================================================
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbycQm4QIbtHpDceyOoy7bdcInb5wP_MNTNNn2oPfq9Ej6Lx68GW4R0yQBqIYN_tzzF_0Q/exec';
 
-  // DOM refs
-  const teacherInput = document.getElementById('teacherInput');
-  const setTeacherBtn = document.getElementById('setTeacherBtn');
-  const currentTeacherDisplay = document.getElementById('currentTeacherDisplay');
-  const teacherStatus = document.getElementById('teacherStatus');
-  const displayStudent = document.getElementById('displayStudent');
-  const displayAction = document.getElementById('displayAction');
-  const sheetStatusText = document.getElementById('sheetStatusText');
-  const sheetStatusDot = document.getElementById('sheetStatusDot');
-  const checkedInItems = document.getElementById('checkedInItems');
-  const totalStudents = document.getElementById('totalStudents');
-  const checkedInCount = document.getElementById('checkedInCount');
-  const checkedOutCount = document.getElementById('checkedOutCount');
-  const recordCount = document.getElementById('recordCount');
+// ============================================================
+// APP CODE - COMPLETE AND FIXED
+// ============================================================
 
-  // ----- Load students from Google Sheets -----
-  async function loadStudents() {
-    try {
-      sheetStatusText.textContent = 'Loading students...';
-      sheetStatusDot.className = 'status-dot saving';
+let currentTeacher = null;
+let students = {};
+let checkedInStudents = [];
+let records = [];
+let html5QrCode = null;
+let lastScanTime = 0;
+let isProcessing = false;
+
+// DOM refs
+const teacherInput = document.getElementById('teacherInput');
+const setTeacherBtn = document.getElementById('setTeacherBtn');
+const currentTeacherDisplay = document.getElementById('currentTeacherDisplay');
+const teacherStatus = document.getElementById('teacherStatus');
+const displayStudent = document.getElementById('displayStudent');
+const displayAction = document.getElementById('displayAction');
+const sheetStatusText = document.getElementById('sheetStatusText');
+const sheetStatusDot = document.getElementById('sheetStatusDot');
+const checkedInItems = document.getElementById('checkedInItems');
+const totalStudents = document.getElementById('totalStudents');
+const checkedInCount = document.getElementById('checkedInCount');
+const checkedOutCount = document.getElementById('checkedOutCount');
+const recordCount = document.getElementById('recordCount');
+
+// ============================================================
+// UPDATE TEACHER DISPLAY - FIXED
+// ============================================================
+function updateTeacherDisplay() {
+  if (currentTeacher) {
+    currentTeacherDisplay.textContent = currentTeacher;
+    currentTeacherDisplay.style.color = '#2f6b4a';
+    teacherStatus.innerHTML = `<i class="fas fa-circle" style="color: #4caf50; font-size: 0.5rem;"></i> Active`;
+  } else {
+    currentTeacherDisplay.textContent = 'Not set';
+    currentTeacherDisplay.style.color = '#5f4a3a';
+    teacherStatus.innerHTML = `<i class="fas fa-circle" style="color: #ff9800; font-size: 0.5rem;"></i> Ready`;
+  }
+}
+
+// ============================================================
+// SET TEACHER - FIXED
+// ============================================================
+function setTeacher(code) {
+  if (!code || code.trim() === '') {
+    displayAction.textContent = '⚠️ Enter teacher code';
+    displayAction.className = 'log-value error';
+    return;
+  }
+  
+  currentTeacher = code.trim().toUpperCase();
+  
+  // Update display immediately
+  currentTeacherDisplay.textContent = currentTeacher;
+  currentTeacherDisplay.style.color = '#2f6b4a';
+  teacherStatus.innerHTML = `<i class="fas fa-circle" style="color: #4caf50; font-size: 0.5rem;"></i> Active`;
+  
+  saveLocalState();
+  
+  displayAction.textContent = `✅ Teacher ${currentTeacher} set`;
+  displayAction.className = 'log-value success';
+  teacherInput.value = '';
+  
+  setTimeout(() => {
+    displayAction.className = 'log-value';
+    displayAction.textContent = 'Ready for scan';
+  }, 2000);
+}
+
+// ============================================================
+// LOAD LOCAL STATE
+// ============================================================
+function loadLocalState() {
+  try {
+    const saved = localStorage.getItem('kitsong_state');
+    if (saved) {
+      const data = JSON.parse(saved);
+      checkedInStudents = data.checkedInStudents || [];
+      records = data.records || [];
+      currentTeacher = data.currentTeacher || null;
       
-      const response = await fetch(GOOGLE_SCRIPT_URL + '?action=getStudents');
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      
-      students = data;
-      Object.keys(students).forEach(id => {
-        students[id].status = 'out';
-        students[id].teacher = null;
-        students[id].checkInTime = null;
+      checkedInStudents.forEach(id => {
+        if (students[id]) {
+          students[id].status = 'in';
+          students[id].teacher = data.studentTeachers ? data.studentTeachers[id] : null;
+          students[id].checkInTime = data.studentCheckIns ? data.studentCheckIns[id] : null;
+        }
       });
       
-      loadLocalState();
-      sheetStatusText.textContent = '✅ Connected';
-      sheetStatusDot.className = 'status-dot online';
-      updateUI();
-      renderCheckedInList();
-      console.log('✅ Students loaded:', Object.keys(students).length);
-      
-    } catch (error) {
-      console.error('Error loading students:', error);
-      sheetStatusText.textContent = '⚠️ Error loading';
-      sheetStatusDot.className = 'status-dot offline';
-      loadSampleData();
+      updateTeacherDisplay();
     }
+  } catch (e) { 
+    console.warn('Could not load local state'); 
   }
+}
 
-  // ----- Fallback sample data -----
-  function loadSampleData() {
-    students = {
-      'S001': { name: 'Hlompho', surname: 'Bogatsu', grade: '10', status: 'out' },
-      'S002': { name: 'Orearabile', surname: 'Diale', grade: '11', status: 'out' },
-      'S003': { name: 'Phetogo', surname: 'Diale', grade: '12', status: 'out' },
-      'S004': { name: 'Ruth', surname: 'Edossa', grade: '10', status: 'out' },
-      'S005': { name: 'Olerato', surname: 'Khunou', grade: '11', status: 'out' },
-      'S006': { name: 'Oletshegofaditse', surname: 'Khuto', grade: '12', status: 'out' },
-      'S007': { name: 'Ontiretse', surname: 'Lesejane', grade: '10', status: 'out' },
-      'S008': { name: 'Omolemo', surname: 'Mafoko', grade: '11', status: 'out' },
-      'S009': { name: 'Resego', surname: 'Makofane', grade: '12', status: 'out' },
-      'S010': { name: 'Tumelo', surname: 'Maseko', grade: '10', status: 'out' },
-      'S011': { name: 'Regomoditswe', surname: 'Mashao', grade: '11', status: 'out' },
-      'S012': { name: 'Omogolo', surname: 'Mdluli', grade: '12', status: 'out' },
-      'S013': { name: 'Tebogo', surname: 'Mmutlane', grade: '10', status: 'out' },
-      'S014': { name: 'Kgolagano', surname: 'Modikoe', grade: '11', status: 'out' },
-      'S015': { name: 'Nomthandazo', surname: 'Mokgatle', grade: '12', status: 'out' }
-    };
+// ============================================================
+// SAVE LOCAL STATE
+// ============================================================
+function saveLocalState() {
+  try {
+    const studentTeachers = {};
+    const studentCheckIns = {};
+    checkedInStudents.forEach(id => {
+      if (students[id]) {
+        studentTeachers[id] = students[id].teacher;
+        studentCheckIns[id] = students[id].checkInTime;
+      }
+    });
+    localStorage.setItem('kitsong_state', JSON.stringify({
+      checkedInStudents,
+      records,
+      currentTeacher,
+      studentTeachers,
+      studentCheckIns
+    }));
+  } catch (e) { console.warn('Could not save local state'); }
+}
+
+// ============================================================
+// LOAD STUDENTS FROM GOOGLE SHEETS
+// ============================================================
+async function loadStudents() {
+  try {
+    sheetStatusText.textContent = 'Loading students...';
+    sheetStatusDot.className = 'status-dot saving';
+
+    const response = await fetch(GOOGLE_SCRIPT_URL + '?action=getStudents');
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    students = data;
     Object.keys(students).forEach(id => {
+      students[id].status = 'out';
       students[id].teacher = null;
       students[id].checkInTime = null;
     });
+
     loadLocalState();
-    updateUI();
-    renderCheckedInList();
-    sheetStatusText.textContent = '📁 Local Data';
+    sheetStatusText.textContent = '✅ Connected';
     sheetStatusDot.className = 'status-dot online';
-  }
-
-  // ----- Load state from localStorage -----
-  function loadLocalState() {
-    try {
-      const saved = localStorage.getItem('kitsong_state');
-      if (saved) {
-        const data = JSON.parse(saved);
-        checkedInStudents = data.checkedInStudents || [];
-        records = data.records || [];
-        currentTeacher = data.currentTeacher || null;
-        checkedInStudents.forEach(id => {
-          if (students[id]) {
-            students[id].status = 'in';
-            students[id].teacher = data.studentTeachers ? data.studentTeachers[id] : null;
-            students[id].checkInTime = data.studentCheckIns ? data.studentCheckIns[id] : null;
-          }
-        });
-        updateTeacherDisplay();
-      }
-    } catch (e) { console.warn('Could not load local state'); }
-  }
-
-  // ----- Save state to localStorage -----
-  function saveLocalState() {
-    try {
-      const studentTeachers = {};
-      const studentCheckIns = {};
-      checkedInStudents.forEach(id => {
-        if (students[id]) {
-          studentTeachers[id] = students[id].teacher;
-          studentCheckIns[id] = students[id].checkInTime;
-        }
-      });
-      localStorage.setItem('kitsong_state', JSON.stringify({
-        checkedInStudents,
-        records,
-        currentTeacher,
-        studentTeachers,
-        studentCheckIns
-      }));
-    } catch (e) { console.warn('Could not save local state'); }
-  }
-
-  // ----- Set teacher -----
-  function setTeacher(code) {
-    if (!code || code.trim() === '') {
-      displayAction.textContent = '⚠️ Enter teacher code';
-      displayAction.className = 'log-value error';
-      return;
-    }
-    currentTeacher = code.trim().toUpperCase();
-    updateTeacherDisplay();
-    saveLocalState();
-    displayAction.textContent = `✅ Teacher ${currentTeacher} set`;
-    displayAction.className = 'log-value success';
-    teacherInput.value = '';
-    setTimeout(() => {
-      displayAction.className = 'log-value';
-      displayAction.textContent = 'Ready for scan';
-    }, 2000);
-  }
-
-  // ----- Update teacher display -----
-  function updateTeacherDisplay() {
-    if (currentTeacher) {
-      currentTeacherDisplay.textContent = currentTeacher;
-      teacherStatus.innerHTML = `<i class="fas fa-circle" style="color: #4caf50; font-size: 0.5rem;"></i> Active`;
-    } else {
-      currentTeacherDisplay.textContent = 'Not set';
-      teacherStatus.innerHTML = `<i class="fas fa-circle" style="color: #ff9800; font-size: 0.5rem;"></i> Ready`;
-    }
-  }
-
-  // ----- Check student with confirmation -----
-  async function checkStudent(studentId, isConfirmed = false) {
-    if (isProcessing) return;
-    isProcessing = true;
-
-    let foundId = studentId;
-    if (!students[foundId]) {
-      for (let [id, data] of Object.entries(students)) {
-        const fullName = `${data.name} ${data.surname}`.toLowerCase();
-        if (fullName === studentId.toLowerCase() || id.toLowerCase() === studentId.toLowerCase()) {
-          foundId = id;
-          break;
-        }
-      }
-    }
-
-    if (!students[foundId]) {
-      displayAction.textContent = `⚠️ Student not found: ${studentId}`;
-      displayAction.className = 'log-value error';
-      setTimeout(() => {
-        displayAction.className = 'log-value';
-        displayAction.textContent = 'Ready for scan';
-      }, 2000);
-      isProcessing = false;
-      return;
-    }
-
-    const student = students[foundId];
-    const fullName = `${student.name} ${student.surname}`.trim();
-    const currentStatus = student.status;
-    const action = currentStatus === 'in' ? 'check-out' : 'check-in';
-    const actionText = currentStatus === 'in' ? 'OUT' : 'IN';
-    
-    // If not confirmed, show confirmation dialog
-    if (!isConfirmed) {
-      const confirmMessage = `📋 Confirm Action:\n\nStudent: ${fullName}\nGrade: ${student.grade}\nAction: Check ${actionText}\n\nAre you sure you want to check ${actionText.toLowerCase()} this student?`;
-      
-      if (!confirm(confirmMessage)) {
-        displayAction.textContent = '⏹️ Cancelled';
-        displayAction.className = 'log-value info';
-        setTimeout(() => {
-          displayAction.className = 'log-value';
-          displayAction.textContent = 'Ready for scan';
-        }, 1500);
-        isProcessing = false;
-        return;
-      }
-    }
-
-    // Process the check-in/out
-    if (student.status === 'in') {
-      // Check OUT
-      student.status = 'out';
-      student.teacher = null;
-      student.checkInTime = null;
-      const index = checkedInStudents.indexOf(foundId);
-      if (index > -1) checkedInStudents.splice(index, 1);
-      displayAction.textContent = `🔁 ${fullName} Checked Out`;
-      displayAction.className = 'log-value info';
-    } else {
-      // Check IN
-      student.status = 'in';
-      student.teacher = currentTeacher || 'Unknown';
-      student.checkInTime = new Date().toLocaleTimeString();
-      if (!checkedInStudents.includes(foundId)) checkedInStudents.push(foundId);
-      displayAction.textContent = `✅ ${fullName} Checked In`;
-      displayAction.className = 'log-value success';
-    }
-
-    displayStudent.textContent = `${fullName} (Grade ${student.grade})`;
-    
-    await saveToSheet(foundId, fullName, action);
-    
-    saveLocalState();
     updateUI();
     renderCheckedInList();
-    
-    if (navigator.vibrate) navigator.vibrate(50);
-    setTimeout(() => { isProcessing = false; }, 500);
+    console.log('✅ Students loaded:', Object.keys(students).length);
+
+  } catch (error) {
+    console.error('Error loading students:', error);
+    sheetStatusText.textContent = '⚠️ Error loading';
+    sheetStatusDot.className = 'status-dot offline';
+    loadSampleData();
   }
+}
 
-  // ----- Save to Google Sheets -----
-  async function saveToSheet(studentId, studentName, action) {
-    const timestamp = new Date().toISOString();
-    const entry = {
-      teacher: currentTeacher || 'Unknown',
-      studentId: studentId,
-      studentName: studentName,
-      action: action,
-      timestamp: timestamp,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString()
-    };
+// ============================================================
+// FALLBACK SAMPLE DATA
+// ============================================================
+function loadSampleData() {
+  students = {
+    'S001': { name: 'Hlompho', surname: 'Bogatsu', grade: '10', status: 'out' },
+    'S002': { name: 'Orearabile', surname: 'Diale', grade: '11', status: 'out' },
+    'S003': { name: 'Phetogo', surname: 'Diale', grade: '12', status: 'out' },
+    'S004': { name: 'Ruth', surname: 'Edossa', grade: '10', status: 'out' },
+    'S005': { name: 'Olerato', surname: 'Khunou', grade: '11', status: 'out' },
+    'S006': { name: 'Oletshegofaditse', surname: 'Khuto', grade: '12', status: 'out' },
+    'S007': { name: 'Ontiretse', surname: 'Lesejane', grade: '10', status: 'out' },
+    'S008': { name: 'Omolemo', surname: 'Mafoko', grade: '11', status: 'out' },
+    'S009': { name: 'Resego', surname: 'Makofane', grade: '12', status: 'out' },
+    'S010': { name: 'Tumelo', surname: 'Maseko', grade: '10', status: 'out' },
+    'S011': { name: 'Regomoditswe', surname: 'Mashao', grade: '11', status: 'out' },
+    'S012': { name: 'Omogolo', surname: 'Mdluli', grade: '12', status: 'out' },
+    'S013': { name: 'Tebogo', surname: 'Mmutlane', grade: '10', status: 'out' },
+    'S014': { name: 'Kgolagano', surname: 'Modikoe', grade: '11', status: 'out' },
+    'S015': { name: 'Nomthandazo', surname: 'Mokgatle', grade: '12', status: 'out' }
+  };
+  Object.keys(students).forEach(id => {
+    students[id].teacher = null;
+    students[id].checkInTime = null;
+  });
+  loadLocalState();
+  updateUI();
+  renderCheckedInList();
+  sheetStatusText.textContent = '📁 Local Data';
+  sheetStatusDot.className = 'status-dot online';
+}
 
-    records.push(entry);
+// ============================================================
+// CHECK STUDENT WITH CONFIRMATION
+// ============================================================
+async function checkStudent(studentId, isConfirmed = false) {
+  if (isProcessing) return;
+  isProcessing = true;
 
-    sheetStatusText.textContent = 'Saving...';
-    sheetStatusDot.className = 'status-dot saving';
-
-    try {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry)
-      });
-      
-      sheetStatusText.textContent = '✅ Saved';
-      sheetStatusDot.className = 'status-dot online';
-    } catch (error) {
-      console.error('Error saving:', error);
-      sheetStatusText.textContent = '⚠️ Offline';
-      sheetStatusDot.className = 'status-dot offline';
-    }
-  }
-
-  // ----- Process QR scan -----
-  function processQRScan(decodedText) {
-    console.log('📱 QR Scanned:', decodedText);
-    
-    const now = Date.now();
-    if (now - lastScanTime < 1500) return;
-    lastScanTime = now;
-
-    if (!currentTeacher) {
-      displayAction.textContent = '⚠️ Set teacher first!';
-      displayAction.className = 'log-value error';
-      setTimeout(() => {
-        displayAction.className = 'log-value';
-        displayAction.textContent = 'Ready for scan';
-      }, 2000);
-      return;
-    }
-
-    const input = decodedText.trim();
-    
-    // Try to find by ID first
-    if (students[input]) {
-      checkStudent(input);
-      return;
-    }
-    
-    // If not found, try to find by full name (case insensitive)
-    let foundId = null;
-    const inputLower = input.toLowerCase();
-    
+  let foundId = studentId;
+  if (!students[foundId]) {
     for (let [id, data] of Object.entries(students)) {
       const fullName = `${data.name} ${data.surname}`.toLowerCase();
-      const idLower = id.toLowerCase();
-      
-      if (fullName === inputLower || idLower === inputLower) {
+      if (fullName === studentId.toLowerCase() || id.toLowerCase() === studentId.toLowerCase()) {
         foundId = id;
         break;
       }
     }
-    
-    if (foundId) {
-      checkStudent(foundId);
-    } else {
-      displayAction.textContent = `⚠️ Student not found: ${input}`;
-      displayAction.className = 'log-value error';
-      console.log('❌ Student not found:', input);
-      console.log('📚 Available students:', Object.keys(students));
-      
+  }
+
+  if (!students[foundId]) {
+    displayAction.textContent = `⚠️ Student not found: ${studentId}`;
+    displayAction.className = 'log-value error';
+    setTimeout(() => {
+      displayAction.className = 'log-value';
+      displayAction.textContent = 'Ready for scan';
+    }, 2000);
+    isProcessing = false;
+    return;
+  }
+
+  const student = students[foundId];
+  const fullName = `${student.name} ${student.surname}`.trim();
+  const currentStatus = student.status;
+  const action = currentStatus === 'in' ? 'check-out' : 'check-in';
+  const actionText = currentStatus === 'in' ? 'OUT' : 'IN';
+
+  if (!isConfirmed) {
+    const confirmMessage = `📋 Confirm Action:\n\n` +
+                          `Student: ${fullName}\n` +
+                          `Grade: ${student.grade}\n` +
+                          `Action: Check ${actionText}\n\n` +
+                          `Are you sure you want to check ${actionText.toLowerCase()} this student?`;
+
+    if (!confirm(confirmMessage)) {
+      displayAction.textContent = '⏹️ Cancelled';
+      displayAction.className = 'log-value info';
       setTimeout(() => {
         displayAction.className = 'log-value';
         displayAction.textContent = 'Ready for scan';
-      }, 3000);
+      }, 1500);
+      isProcessing = false;
+      return;
     }
   }
 
-  // ----- Render checked in list -----
-  function renderCheckedInList() {
-    if (checkedInStudents.length === 0) {
-      checkedInItems.innerHTML = '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
-      return;
-    }
-    let html = '';
-    checkedInStudents.forEach(id => {
-      const student = students[id];
-      if (student && student.status === 'in') {
-        const fullName = `${student.name} ${student.surname}`.trim();
-        html += `
-          <div class="checked-in-item">
-            <div>
-              <span class="student-name">${fullName}</span>
-              <span class="student-teacher">${student.teacher || 'Unknown'} · Grade ${student.grade}</span>
-            </div>
-            <button class="checkout-btn" onclick="window.checkoutStudent('${id}')">
-              <i class="fas fa-sign-out-alt"></i> Out
-            </button>
-          </div>
-        `;
-      }
-    });
-    checkedInItems.innerHTML = html || '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
+  if (student.status === 'in') {
+    student.status = 'out';
+    student.teacher = null;
+    student.checkInTime = null;
+    const index = checkedInStudents.indexOf(foundId);
+    if (index > -1) checkedInStudents.splice(index, 1);
+    displayAction.textContent = `🔁 ${fullName} Checked Out`;
+    displayAction.className = 'log-value info';
+  } else {
+    student.status = 'in';
+    student.teacher = currentTeacher || 'Unknown';
+    student.checkInTime = new Date().toLocaleTimeString();
+    if (!checkedInStudents.includes(foundId)) checkedInStudents.push(foundId);
+    displayAction.textContent = `✅ ${fullName} Checked In`;
+    displayAction.className = 'log-value success';
   }
 
-  // ----- Checkout student with confirmation -----
-  window.checkoutStudent = function(studentId) {
-    if (!currentTeacher) {
-      displayAction.textContent = '⚠️ Set teacher first!';
-      displayAction.className = 'log-value error';
-      return;
-    }
-    
-    // Show confirmation before checking out from button
-    const student = students[studentId];
-    if (student && student.status === 'in') {
-      const fullName = `${student.name} ${student.surname}`.trim();
-      const confirmMessage = `📋 Confirm Check Out:\n\nStudent: ${fullName}\nGrade: ${student.grade}\n\nAre you sure you want to check out this student?`;
-      
-      if (!confirm(confirmMessage)) {
-        displayAction.textContent = '⏹️ Cancelled';
-        displayAction.className = 'log-value info';
-        setTimeout(() => {
-          displayAction.className = 'log-value';
-          displayAction.textContent = 'Ready for scan';
-        }, 1500);
-        return;
-      }
-    }
-    
-    checkStudent(studentId, true);
+  displayStudent.textContent = `${fullName} (Grade ${student.grade})`;
+  await saveToSheet(foundId, fullName, action);
+  saveLocalState();
+  updateUI();
+  renderCheckedInList();
+  if (navigator.vibrate) navigator.vibrate(50);
+  setTimeout(() => { isProcessing = false; }, 500);
+}
+
+// ============================================================
+// SAVE TO GOOGLE SHEETS
+// ============================================================
+async function saveToSheet(studentId, studentName, action) {
+  const timestamp = new Date().toISOString();
+  const entry = {
+    teacher: currentTeacher || 'Unknown',
+    studentId: studentId,
+    studentName: studentName,
+    action: action,
+    timestamp: timestamp,
+    date: new Date().toLocaleDateString(),
+    time: new Date().toLocaleTimeString()
   };
 
-  // ----- Update UI -----
-  function updateUI() {
-    const total = Object.keys(students).length;
-    const checkedIn = checkedInStudents.length;
-    totalStudents.textContent = total;
-    checkedInCount.textContent = checkedIn;
-    checkedOutCount.textContent = total - checkedIn;
-    recordCount.textContent = records.length;
+  records.push(entry);
+
+  sheetStatusText.textContent = 'Saving...';
+  sheetStatusDot.className = 'status-dot saving';
+
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    });
+
+    sheetStatusText.textContent = '✅ Saved';
+    sheetStatusDot.className = 'status-dot online';
+  } catch (error) {
+    console.error('Error saving:', error);
+    sheetStatusText.textContent = '⚠️ Offline';
+    sheetStatusDot.className = 'status-dot offline';
+  }
+}
+
+// ============================================================
+// QR SCAN PROCESSING
+// ============================================================
+function processQRScan(decodedText) {
+  console.log('📱 QR Scanned:', decodedText);
+
+  const now = Date.now();
+  if (now - lastScanTime < 1500) return;
+  lastScanTime = now;
+
+  if (!currentTeacher) {
+    displayAction.textContent = '⚠️ Set teacher first!';
+    displayAction.className = 'log-value error';
+    setTimeout(() => {
+      displayAction.className = 'log-value';
+      displayAction.textContent = 'Ready for scan';
+    }, 2000);
+    return;
   }
 
-  // ----- QR Scanner -----
-  function initQrScanner() {
-    if (html5QrCode) {
-      stopQrScanner();
-      setTimeout(() => initQrScanner(), 300);
+  const input = decodedText.trim();
+
+  if (students[input]) {
+    checkStudent(input);
+    return;
+  }
+
+  let foundId = null;
+  const inputLower = input.toLowerCase();
+
+  for (let [id, data] of Object.entries(students)) {
+    const fullName = `${data.name} ${data.surname}`.toLowerCase();
+    const idLower = id.toLowerCase();
+
+    if (fullName === inputLower || idLower === inputLower) {
+      foundId = id;
+      break;
+    }
+  }
+
+  if (foundId) {
+    checkStudent(foundId);
+  } else {
+    displayAction.textContent = `⚠️ Student not found: ${input}`;
+    displayAction.className = 'log-value error';
+    console.log('❌ Student not found:', input);
+    console.log('📚 Available students:', Object.keys(students));
+
+    setTimeout(() => {
+      displayAction.className = 'log-value';
+      displayAction.textContent = 'Ready for scan';
+    }, 3000);
+  }
+}
+
+// ============================================================
+// RENDER CHECKED IN LIST
+// ============================================================
+function renderCheckedInList() {
+  if (checkedInStudents.length === 0) {
+    checkedInItems.innerHTML = '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
+    return;
+  }
+
+  let html = '';
+  checkedInStudents.forEach(id => {
+    const student = students[id];
+    if (student && student.status === 'in') {
+      const fullName = `${student.name} ${student.surname}`.trim();
+      html += `
+        <div class="checked-in-item">
+          <div>
+            <span class="student-name">${fullName}</span>
+            <span class="student-teacher">${student.teacher || 'Unknown'} · Grade ${student.grade}</span>
+          </div>
+          <button class="checkout-btn" onclick="window.checkoutStudent('${id}')">
+            <i class="fas fa-sign-out-alt"></i> Out
+          </button>
+        </div>
+      `;
+    }
+  });
+
+  checkedInItems.innerHTML = html || '<div style="color: #a08775; font-size: 0.8rem; text-align: center; padding: 0.5rem;">No students checked in</div>';
+}
+
+// ============================================================
+// CHECKOUT STUDENT (Called from "Out" button)
+// ============================================================
+window.checkoutStudent = function(studentId) {
+  if (!currentTeacher) {
+    displayAction.textContent = '⚠️ Set teacher first!';
+    displayAction.className = 'log-value error';
+    return;
+  }
+
+  const student = students[studentId];
+  if (student && student.status === 'in') {
+    const fullName = `${student.name} ${student.surname}`.trim();
+    const confirmMessage = `📋 Confirm Check Out:\n\n` +
+                          `Student: ${fullName}\n` +
+                          `Grade: ${student.grade}\n\n` +
+                          `Are you sure you want to check out this student?`;
+
+    if (!confirm(confirmMessage)) {
+      displayAction.textContent = '⏹️ Cancelled';
+      displayAction.className = 'log-value info';
+      setTimeout(() => {
+        displayAction.className = 'log-value';
+        displayAction.textContent = 'Ready for scan';
+      }, 1500);
       return;
     }
-    
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      displayAction.textContent = '⚠️ Camera not supported on this device';
+  }
+
+  checkStudent(studentId, true);
+};
+
+// ============================================================
+// UPDATE UI
+// ============================================================
+function updateUI() {
+  const total = Object.keys(students).length;
+  const checkedIn = checkedInStudents.length;
+  totalStudents.textContent = total;
+  checkedInCount.textContent = checkedIn;
+  checkedOutCount.textContent = total - checkedIn;
+  recordCount.textContent = records.length;
+}
+
+// ============================================================
+// QR SCANNER
+// ============================================================
+function initQrScanner() {
+  if (html5QrCode) {
+    stopQrScanner();
+    setTimeout(() => initQrScanner(), 300);
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    displayAction.textContent = '⚠️ Camera not supported on this device';
+    displayAction.className = 'log-value error';
+    return;
+  }
+
+  try {
+    html5QrCode = new Html5Qrcode("qr-reader", {
+      verbose: false,
+      formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
+    });
+
+    const config = {
+      fps: 15,
+      qrbox: { width: 240, height: 240 },
+      aspectRatio: 1.0
+    };
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      (decodedText) => { processQRScan(decodedText); },
+      (error) => {}
+    ).then(() => {
+      displayAction.textContent = '📷 Scanning...';
+      displayAction.className = 'log-value info';
+    }).catch((err) => {
+      console.error('Camera error:', err);
+      displayAction.textContent = '⚠️ Camera error: ' + err.message;
       displayAction.className = 'log-value error';
-      return
+      html5QrCode = null;
+    });
+  } catch (e) {
+    console.error('Scanner init error:', e);
+    displayAction.textContent = '⚠️ Scanner init failed: ' + e.message;
+    displayAction.className = 'log-value error';
+  }
+}
+
+function stopQrScanner() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => {
+      displayAction.textContent = '⏹️ Stopped';
+      displayAction.className = 'log-value info';
+      html5QrCode = null;
+    }).catch(() => {
+      html5QrCode = null;
+    });
+  }
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+setTeacherBtn.addEventListener('click', () => setTeacher(teacherInput.value));
+teacherInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    setTeacher(teacherInput.value);
+  }
+});
+
+document.getElementById('startScannerBtn').addEventListener('click', () => {
+  if (!currentTeacher) {
+    displayAction.textContent = '⚠️ Set teacher first!';
+    displayAction.className = 'log-value error';
+    setTimeout(() => {
+      displayAction.className = 'log-value';
+      displayAction.textContent = 'Ready for scan';
+    }, 2000);
+    return;
+  }
+  initQrScanner();
+});
+
+document.getElementById('stopScannerBtn').addEventListener('click', stopQrScanner);
+window.addEventListener('beforeunload', stopQrScanner);
+
+// ============================================================
+// INITIALIZE
+// ============================================================
+console.log('🚀 Kitsong Check-in System Loading...');
+loadStudents();
+console.log('✅ Ready!');
+</script>
+
+</body>
+</html>
